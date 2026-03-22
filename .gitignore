@@ -1,0 +1,51 @@
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+*.iml
+
+# =========================
+# Logs
+# =========================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Java / Maven (backend)
+# =========================
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# =========================
+# Node / Vite (frontend)
+# =========================
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+
+# =========================
+# Coverage / Test Outputs
+# =========================
+coverage/
+*.lcov
+
+# =========================
+# Build / Temp files
+# =========================
+*.tmp
+*.temp
