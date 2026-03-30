@@ -1,8 +1,12 @@
-import React from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Home from './pages/Home';
 
 const App = () => {
   return (
-    <div className='text-5xl'>App</div>
+    <Routes>
+      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/home" element={<Home />} />
+    </Routes>
   )
 }
 
