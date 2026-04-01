@@ -1,4 +1,4 @@
-package com.smartcampusopshub.backend.model;
+package com.smartcampusopshub.backend.auth.model;
 
 import jakarta.persistence.*;
 import lombok.*;
