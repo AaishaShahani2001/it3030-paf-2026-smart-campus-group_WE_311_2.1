@@ -1,5 +1,7 @@
 package com.smartcampusopshub.backend.auth.controller;
 import java.util.Optional;
+
+import com.smartcampusopshub.backend.auth.JwtUtil;
 import com.smartcampusopshub.backend.auth.model.Role;
 import com.smartcampusopshub.backend.auth.model.User;
 import com.smartcampusopshub.backend.auth.repository.UserRepository;
@@ -15,6 +17,9 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
+
+    @Autowired
+    private JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @GetMapping("/")
@@ -36,19 +41,19 @@ public class AuthController {
         return "User registered successfully";
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User user) {
+   @PostMapping("/token")
+public ResponseEntity<?> login(@RequestBody User loginUser) {
 
-    Optional<User> dbUser = userRepository.findByUsername(user.getUsername());
+    Optional<User> user = userRepository.findByUsername(loginUser.getUsername());
 
-    if (dbUser.isEmpty()) {
-        return ResponseEntity.status(401).body("User not found");
+    if (user.isPresent() &&
+        passwordEncoder.matches(loginUser.getPassword(), user.get().getPassword())) {
+
+        String token = jwtUtil.generateToken(loginUser.getUsername());
+
+        return ResponseEntity.ok(token);
     }
 
-    if (!passwordEncoder.matches(user.getPassword(), dbUser.get().getPassword())) {
-        return ResponseEntity.status(401).body("Invalid password");
-    }
-
-    return ResponseEntity.ok("Login successful");
+    return ResponseEntity.status(401).body("Invalid credentials");
 }
 }
