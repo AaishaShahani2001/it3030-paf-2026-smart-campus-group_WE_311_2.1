@@ -8,6 +8,8 @@ import AdminPage from './pages/AdminPage';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
+import ReportAnIssue from './pages/ReportAnIssue';
+
 const Layout = ({ children }) => (
   <div className="min-h-screen font-sans bg-white selection:bg-emerald-100 flex flex-col">
     <Navbar />
@@ -28,6 +30,8 @@ const App = () => {
         
         <Route path="/facilities" element={<Layout><ResourceList /></Layout>} />
         <Route path="/admin/facilities" element={<Layout><AdminPage /></Layout>} />
+
+        <Route path="/report-an-issue" element={<ReportAnIssue />} />
       </Routes>
     </>
   )
