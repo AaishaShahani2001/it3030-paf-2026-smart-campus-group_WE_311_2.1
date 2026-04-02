@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Menu, X, LayoutDashboard } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { name: 'Home', href: '#' },
-    { name: 'Facilities', href: '#' },
+    { name: 'Home', href: '/home' },
+    { name: 'Facilities', href: '/facilities' },
     { name: 'Bookings', href: '#' },
     { name: 'Report An Issue', href: '#' },
+    { name: 'Admin', href: '/admin/facilities' },
   ];
 
   return (
@@ -28,13 +30,13 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
-                href={link.href}
+                to={link.href}
                 className="text-slate-600 hover:text-emerald-600 font-semibold text-sm transition-colors duration-200"
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
             <div className="h-6 w-px bg-slate-200"></div>
             <a
@@ -62,13 +64,13 @@ const Navbar = () => {
         <div className="md:hidden bg-white/95 backdrop-blur-3xl border-b border-slate-100 shadow-2xl absolute w-full left-0 origin-top animate-in slide-in-from-top-2">
           <div className="px-6 py-4 space-y-4">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
-                href={link.href}
+                to={link.href}
                 className="block px-4 py-3 text-base font-semibold text-slate-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
             <div className="pt-4 border-t border-slate-100">
               <a
