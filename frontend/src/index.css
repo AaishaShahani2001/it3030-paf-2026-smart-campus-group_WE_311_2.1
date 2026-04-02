@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary: var(--color-emerald-500);
+  --color-primary-dark: var(--color-emerald-600);
+  --color-secondary: var(--color-slate-200);
+  --color-surface: var(--color-white);
+  --color-text: var(--color-slate-900);
+  --color-text-light: var(--color-slate-500);
+  --color-danger: var(--color-red-500);
+}
