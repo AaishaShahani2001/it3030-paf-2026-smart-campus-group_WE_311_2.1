@@ -56,4 +56,11 @@ public ResponseEntity<?> login(@RequestBody User loginUser) {
 
     return ResponseEntity.status(401).body("Invalid credentials");
 }
+
+
+@GetMapping("/protected")
+public ResponseEntity<?> protectedEndpoint() {
+    return ResponseEntity.ok("Protected endpoint accessed");
+}
+
 }
