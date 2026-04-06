@@ -46,12 +46,26 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException ex) {
+        @ExceptionHandler(ConflictException.class)
+        public ResponseEntity<ApiResponse<?>> handleConflict(ConflictException ex) {
+
         log.warn("Conflict: {}", ex.getMessage());
+
+        if (ex.getMessage().startsWith("CONFLICT|")) {
+
+                String[] parts = ex.getMessage().split("\\|");
+                String[] suggestions = parts[1].split(",");
+
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error(
+                                "Time slot already booked!",
+                                List.of(suggestions)
+                        ));
+        }
+
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(ex.getMessage()));
-    }
+        }
 
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ApiResponse<Void>> handleFileStorage(FileStorageException ex) {
