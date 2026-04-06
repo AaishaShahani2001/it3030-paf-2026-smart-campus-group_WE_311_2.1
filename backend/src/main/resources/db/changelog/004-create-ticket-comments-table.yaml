@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-ticket-comments-table
+      author: smart-campus-ops-hub
+      changes:
+        - createTable:
+            tableName: ticket_comments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticket_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_comment_ticket
+                    references: tickets(id)
+                    deleteCascade: true
+              - column:
+                  name: author_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_comment_author
+                    references: users(id)
+              - column:
+                  name: content
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - createIndex:
+            indexName: idx_comment_ticket
+            tableName: ticket_comments
+            columns:
+              - column:
+                  name: ticket_id

@@ -5,8 +5,8 @@ import com.smartcampusopshub.backend.Asset.dto.ResourceResponse;
 import com.smartcampusopshub.backend.Asset.entity.Resource;
 import com.smartcampusopshub.backend.Asset.entity.ResourceStatus;
 import com.smartcampusopshub.backend.Asset.entity.ResourceType;
-import com.smartcampusopshub.backend.Asset.exception.DuplicateResourceException;
-import com.smartcampusopshub.backend.Asset.exception.ResourceNotFoundException;
+import com.smartcampusopshub.backend.common.exception.ConflictException;
+import com.smartcampusopshub.backend.common.exception.ResourceNotFoundException;
 import com.smartcampusopshub.backend.Asset.mapper.ResourceMapper;
 import com.smartcampusopshub.backend.Asset.repository.ResourceRepository;
 import com.smartcampusopshub.backend.Asset.service.ResourceService;
@@ -30,7 +30,7 @@ public class ResourceServiceImpl implements ResourceService {
         resourceRequestValidator.validate(request);
 
         if (resourceRepository.existsByNameIgnoreCase(request.getName())) {
-            throw new DuplicateResourceException("Resource with this name already exists");
+            throw new ConflictException("Resource with this name already exists");
         }
 
         Resource resource = ResourceMapper.toEntity(request);
@@ -84,7 +84,7 @@ public class ResourceServiceImpl implements ResourceService {
         resourceRepository.findByNameIgnoreCase(request.getName())
                 .ifPresent(foundResource -> {
                     if (!foundResource.getId().equals(id)) {
-                        throw new DuplicateResourceException("Another resource with this name already exists");
+                        throw new ConflictException("Another resource with this name already exists");
                     }
                 });
 
