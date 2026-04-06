@@ -18,13 +18,9 @@ public class BookingController {
 
     // CREATE
     @PostMapping
-    public ResponseEntity<?> createBooking(@RequestBody Booking booking) {
-        try {
-            Booking saved = bookingService.createBooking(booking);
-            return ResponseEntity.ok(saved);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<Booking> createBooking(@RequestBody Booking booking) {
+        Booking saved = bookingService.createBooking(booking);
+        return ResponseEntity.ok(saved);
     }
 
     // GET ALL
