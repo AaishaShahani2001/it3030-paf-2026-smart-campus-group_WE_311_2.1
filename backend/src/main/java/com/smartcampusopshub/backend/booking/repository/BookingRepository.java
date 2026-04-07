@@ -18,5 +18,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         Long resourceId,
         LocalDateTime endTime,
         LocalDateTime startTime
-);
+        );
+
+    List<Booking> findByResourceIdAndStartTimeBetweenOrderByStartTime(
+        Long resourceId,
+        LocalDateTime startOfDay,
+        LocalDateTime endOfDay
+        );
+
+    List<Booking> findByResourceIdOrderByStartTimeAsc(Long resourceId);
 }
