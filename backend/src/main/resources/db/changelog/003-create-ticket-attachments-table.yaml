@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-ticket-attachments-table
+      author: smart-campus-ops-hub
+      changes:
+        - createTable:
+            tableName: ticket_attachments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticket_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_attachment_ticket
+                    references: tickets(id)
+                    deleteCascade: true
+              - column:
+                  name: file_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_path
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_type
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_size
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - createIndex:
+            indexName: idx_attachment_ticket
+            tableName: ticket_attachments
+            columns:
+              - column:
+                  name: ticket_id
