@@ -1,7 +1,60 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+
+const TICKET_API_BASE = '/api/tickets';
+
+const decodeJwtPayload = (token) => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((char) => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`)
+        .join("")
+    );
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+};
+
+const looksLikeEmail = (value) => typeof value === "string" && value.includes("@");
+
+const getReporterEmailFromAuthState = () => {
+  const directKeys = ["reporterEmail", "userEmail", "email"];
+  for (const key of directKeys) {
+    const value = localStorage.getItem(key);
+    if (looksLikeEmail(value)) return value;
+  }
+
+  const userKeys = ["user", "authUser", "currentUser"];
+  for (const key of userKeys) {
+    const rawValue = localStorage.getItem(key);
+    if (!rawValue) continue;
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (looksLikeEmail(parsed?.email)) return parsed.email;
+    } catch {
+      // Ignore malformed JSON from unrelated localStorage values.
+    }
+  }
+
+  const tokenKeys = ["token", "accessToken", "jwt", "authToken"];
+  for (const key of tokenKeys) {
+    const token = localStorage.getItem(key);
+    if (!token) continue;
+    const payload = decodeJwtPayload(token);
+    if (looksLikeEmail(payload?.email)) return payload.email;
+    if (looksLikeEmail(payload?.sub)) return payload.sub;
+  }
+
+  return "";
+};
 
 const ReportAnIssue = () => {
   const navigate = useNavigate();
@@ -18,7 +71,15 @@ const ReportAnIssue = () => {
     location: "",
     contactPhone: "",
     contactEmail: "",
+    reporterEmail: "",
   });
+
+  useEffect(() => {
+    const reporterEmail = getReporterEmailFromAuthState();
+    if (reporterEmail) {
+      setTicketForm((prev) => ({ ...prev, reporterEmail }));
+    }
+  }, []);
 
   const handleTicketFieldChange = (event) => {
     const { name, value } = event.target;
@@ -29,14 +90,52 @@ const ReportAnIssue = () => {
     setAttachments(Array.from(event.target.files || []));
   };
 
-  const handleTicketSubmit = (event) => {
+  const handleTicketSubmit = async (event) => {
     event.preventDefault();
     setTicketMessage("");
 
     setIsSubmittingTicket(true);
+    try {
+      if (!ticketForm.reporterEmail) {
+        throw new Error("Could not detect logged-in user email. Please login again.");
+      }
 
-    window.setTimeout(() => {
-      setTicketMessage("Request submitted successfully.");
+      if (attachments.length > 0) {
+        toast.info("Attachments are not uploaded yet. Ticket will be submitted without files.");
+      }
+
+      const response = await fetch(TICKET_API_BASE, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: ticketForm.title,
+          description: ticketForm.description,
+          category: ticketForm.category,
+          priority: ticketForm.priority,
+          location: ticketForm.location,
+          contactPhone: ticketForm.contactPhone || null,
+          contactEmail: ticketForm.contactEmail || null,
+          reporterEmail: ticketForm.reporterEmail,
+        }),
+      });
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to submit ticket.");
+      }
+
+      const successMessage = data?.message || "Request submitted successfully.";
+      setTicketMessage(successMessage);
+      toast.success(successMessage);
+      const reporterEmail = getReporterEmailFromAuthState();
       setTicketForm({
         title: "",
         description: "",
@@ -45,10 +144,14 @@ const ReportAnIssue = () => {
         location: "",
         contactPhone: "",
         contactEmail: "",
+        reporterEmail,
       });
       setAttachments([]);
+    } catch (error) {
+      toast.error(error.message || "Unable to submit ticket right now.");
+    } finally {
       setIsSubmittingTicket(false);
-    }, 300);
+    }
   };
 
   return (
@@ -116,6 +219,11 @@ const ReportAnIssue = () => {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Phone (optional)</label>
                   <input type="text" name="contactPhone" maxLength={50} value={ticketForm.contactPhone} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all" placeholder="For follow-up if needed" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Reporter email</label>
+                  <input type="email" name="reporterEmail" required value={ticketForm.reporterEmail} readOnly className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-100 text-gray-700 sm:text-sm transition-all" placeholder="Auto-filled from login" />
                 </div>
 
                 <div>
