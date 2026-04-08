@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 
 const TICKET_API_BASE = '/api/tickets';
 
@@ -155,10 +153,7 @@ const ReportAnIssue = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      <Navbar />
-
-      <main className="grow pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full animate-fade-in-up">
+      <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full animate-fade-in-up">
         <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100">
           <div className="px-6 py-8 sm:p-10">
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Report an Issue</h1>
@@ -269,9 +264,6 @@ const ReportAnIssue = () => {
           </div>
         </div>
       </main>
-
-      <Footer />
-    </div>
   );
 };
 
