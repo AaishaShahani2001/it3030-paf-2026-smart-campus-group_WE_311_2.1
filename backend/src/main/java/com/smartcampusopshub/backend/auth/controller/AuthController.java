@@ -13,6 +13,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -67,16 +69,21 @@ public class AuthController {
     }
 
    @PostMapping(value = "/token", consumes = MediaType.APPLICATION_JSON_VALUE)
-public ResponseEntity<String> login(@RequestBody User loginUser) {
+public ResponseEntity<?> login(@RequestBody User loginUser) {
 
     Optional<User> user = userRepository.findByUsername(loginUser.getUsername());
 
     if (user.isPresent() &&
         passwordEncoder.matches(loginUser.getPassword(), user.get().getPassword())) {
 
-        String token = jwtUtil.generateToken(loginUser.getUsername());
+        String token = jwtUtil.generateToken(user.get());
 
-        return ResponseEntity.ok(token);
+        return ResponseEntity.ok(Map.of(
+                "token", token,
+                "username", user.get().getUsername(),
+                "email", user.get().getEmail(),
+                "role", user.get().getRole().name()
+        ));
     }
 
     return ResponseEntity.status(401).body("Invalid credentials");
