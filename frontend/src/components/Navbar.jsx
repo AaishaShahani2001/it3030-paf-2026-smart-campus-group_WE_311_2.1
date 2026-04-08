@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, LayoutDashboard } from "lucide-react";
+import { Menu, X, LayoutDashboard, UserCircle2 } from "lucide-react";
 import { getToken, logout } from "../utils/auth";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const token = getToken();
+  const currentUsername = localStorage.getItem("username") || "User";
 
   const handleLogout = () => {
     logout();
@@ -16,9 +17,9 @@ const Navbar = () => {
 
   const navLinks = [
     { name: "Home", to: "/home" },
-    { name: "Facilities", to: "#" },
+    { name: "Facilities", to: "/admin/facilities" },
     { name: "Bookings", to: "#" },
-    { name: "Report An Issue", to: "#" },
+    { name: "Report An Issue", to: "/report-an-issue" },
   ];
 
   return (
@@ -79,12 +80,22 @@ const Navbar = () => {
                 </Link>
               </>
             ) : (
-              <button
-                onClick={handleLogout}
-                className="px-6 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-full shadow hover:bg-red-600 transition-all duration-300"
-              >
-                Logout
-              </button>
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/admin/dashboard"
+                  className="flex items-center gap-2 px-3 py-2 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                  title="Go to dashboard"
+                >
+                  <UserCircle2 className="h-5 w-5" />
+                  <span className="text-sm font-semibold max-w-28 truncate">{currentUsername}</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-full shadow hover:bg-red-600 transition-all duration-300"
+                >
+                  Logout
+                </button>
+              </div>
             )}
           </nav>
 
@@ -146,12 +157,22 @@ const Navbar = () => {
                   </Link>
                 </div>
               ) : (
-                <button
-                  onClick={handleLogout}
-                  className="block w-full text-center px-4 py-3.5 text-base font-bold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all"
-                >
-                  Logout
-                </button>
+                <div className="space-y-3">
+                  <Link
+                    to="/admin/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-center gap-2 w-full text-center px-4 py-3 text-base font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all"
+                  >
+                    <UserCircle2 className="h-5 w-5" />
+                    <span className="truncate">{currentUsername}</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-center px-4 py-3.5 text-base font-bold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all"
+                  >
+                    Logout
+                  </button>
+                </div>
               )}
             </div>
           </div>

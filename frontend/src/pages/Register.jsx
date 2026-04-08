@@ -2,8 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { registerUser } from "../services/authService";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -51,9 +49,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      <Navbar />
-      <main className="grow px-4 sm:px-6 lg:px-8 py-12 flex items-center justify-center">
+      <main className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
         <div className="w-full max-w-lg bg-white rounded-3xl shadow-xl shadow-gray-200/60 border border-gray-100 p-8 sm:p-10">
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Create an account</h1>
           <p className="mt-2 text-sm text-gray-500">Register to access facilities and report issues.</p>
@@ -128,8 +124,6 @@ const Register = () => {
           </p>
         </div>
       </main>
-      <Footer />
-    </div>
   );
 };
 
