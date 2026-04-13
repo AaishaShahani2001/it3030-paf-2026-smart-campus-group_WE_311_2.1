@@ -13,7 +13,7 @@ const Navbar = () => {
     currentRole === "ADMIN"
       ? "/admin/dashboard"
       : currentRole === "USER"
-        ? "/student/dashboard"
+        ? "/user/dashboard"
         : currentRole === "TECHNICIAN"
           ? "/technician/dashboard"
           : "/home";
