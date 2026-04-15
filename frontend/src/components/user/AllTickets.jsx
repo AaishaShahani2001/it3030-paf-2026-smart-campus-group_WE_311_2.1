@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { getToken } from "../../utils/auth";
-import { AlertCircle, MapPin, RefreshCw, Ticket } from "lucide-react";
+import {
+  AlertCircle,
+  Eye,
+  MapPin,
+  MessageSquare,
+  RefreshCw,
+  Ticket,
+  UserCog,
+} from "lucide-react";
 
 const parseResponse = async (response) => {
   const contentType = response.headers.get("content-type") || "";
@@ -30,6 +38,7 @@ const AllTickets = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedTicketId, setExpandedTicketId] = useState(null);
   const token = getToken();
 
   const fetchTickets = useCallback(async (opts = {}) => {
@@ -74,6 +83,10 @@ const AllTickets = () => {
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
+
+  const handleToggleDetails = useCallback((ticketId) => {
+    setExpandedTicketId((prev) => (prev === ticketId ? null : ticketId));
+  }, []);
 
   if (!token) {
     return (
@@ -184,7 +197,73 @@ const AllTickets = () => {
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
               <span>{t.category?.replace(/_/g, " ")}</span>
+              <button
+                type="button"
+                onClick={() => handleToggleDetails(t.id)}
+                className="ml-auto inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-gray-600 hover:border-emerald-200 hover:text-emerald-700 transition-colors"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                View details
+              </button>
             </div>
+
+            {expandedTicketId === t.id && (
+              <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-lg border border-emerald-100 bg-white p-3">
+                    <p className="mb-2 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                      <UserCog className="h-4 w-4" />
+                      Assigned Technician
+                    </p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {t.assigneeName ||
+                        t.assignee?.fullName ||
+                        t.assignedTechnicianName ||
+                        "Not assigned yet"}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {t.assigneeEmail ||
+                        t.assignee?.email ||
+                        "No email available"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-100 bg-white p-3">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                      Assignment Status
+                    </p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {t.status?.replace(/_/g, " ") || "Unknown"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-lg border border-emerald-100 bg-white p-3">
+                  <p className="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                    <MessageSquare className="h-4 w-4" />
+                    Comments
+                  </p>
+                  {(t.comments || []).length === 0 ? (
+                    <p className="text-sm text-gray-500">No comments available for this ticket.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {(t.comments || []).map((comment, idx) => (
+                        <li
+                          key={comment.id || `${t.id}-comment-${idx}`}
+                          className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+                        >
+                          <p className="text-xs font-semibold text-gray-700">
+                            {comment.authorName || "System"}
+                          </p>
+                          <p className="mt-0.5 text-sm text-gray-600">
+                            {comment.content || "No content"}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </li>
         ))}
       </ul>
