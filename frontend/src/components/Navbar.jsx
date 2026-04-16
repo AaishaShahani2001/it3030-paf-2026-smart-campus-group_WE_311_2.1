@@ -8,6 +8,15 @@ const Navbar = () => {
   const navigate = useNavigate();
   const token = getToken();
   const currentUsername = localStorage.getItem("username") || "User";
+  const currentRole = (localStorage.getItem("role") || "").trim().toUpperCase();
+  const dashboardRoute =
+    currentRole === "ADMIN"
+      ? "/admin/dashboard"
+      : currentRole === "USER"
+        ? "/user/dashboard"
+        : currentRole === "TECHNICIAN"
+          ? "/technician/dashboard"
+          : "/home";
 
   const handleLogout = () => {
     logout();
@@ -82,7 +91,7 @@ const Navbar = () => {
             ) : (
               <div className="flex items-center gap-3">
                 <Link
-                  to="/admin/dashboard"
+                  to={dashboardRoute}
                   className="flex items-center gap-2 px-3 py-2 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
                   title="Go to dashboard"
                 >
@@ -159,7 +168,7 @@ const Navbar = () => {
               ) : (
                 <div className="space-y-3">
                   <Link
-                    to="/admin/dashboard"
+                    to={dashboardRoute}
                     onClick={() => setIsOpen(false)}
                     className="flex items-center justify-center gap-2 w-full text-center px-4 py-3 text-base font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all"
                   >
