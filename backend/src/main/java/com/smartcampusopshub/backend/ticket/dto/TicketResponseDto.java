@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -21,6 +22,14 @@ public class TicketResponseDto {
     private String location;
     private String contactPhone;
     private String contactEmail;
+    private String rejectionReason;
+    private String resolutionNotes;
     private UUID reporterId;
+    private String reporterName;
+    private String assigneeName;
+    private TicketAssigneeDto assignee;
+    private List<TicketAttachmentDto> attachments;
+    private LocalDateTime firstResponseAt;
+    private LocalDateTime resolvedAt;
     private LocalDateTime createdAt;
 }

@@ -218,7 +218,7 @@ const TechOverviewTab = ({ user, stats }) => {
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-emerald-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     </div>
-                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-emerald-600 group-hover:to-emerald-500 group-hover:text-white transition-all duration-300">
+                    <div className="w-12 h-12 bg-linear-to-br from-emerald-50 to-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-emerald-600 group-hover:to-emerald-500 group-hover:text-white transition-all duration-300">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     </div>
                     <div className="relative z-10">
@@ -231,7 +231,7 @@ const TechOverviewTab = ({ user, stats }) => {
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-blue-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-blue-500 group-hover:to-blue-400 group-hover:text-white transition-all duration-300">
+                    <div className="w-12 h-12 bg-linear-to-br from-blue-50 to-blue-100 text-blue-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-blue-500 group-hover:to-blue-400 group-hover:text-white transition-all duration-300">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
                     <div className="relative z-10">
@@ -244,7 +244,7 @@ const TechOverviewTab = ({ user, stats }) => {
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-emerald-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
-                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-emerald-600 group-hover:to-emerald-500 group-hover:text-white transition-all duration-300">
+                    <div className="w-12 h-12 bg-linear-to-br from-emerald-50 to-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-emerald-600 group-hover:to-emerald-500 group-hover:text-white transition-all duration-300">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
                     <div className="relative z-10">
@@ -254,7 +254,7 @@ const TechOverviewTab = ({ user, stats }) => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/40 border border-gray-100 p-8">
+            <div className="bg-white rounded-4xl shadow-xl shadow-gray-200/40 border border-gray-100 p-8">
                 <h2 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
                     <span className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
@@ -401,7 +401,7 @@ const TechJobsTab = ({ token, user }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 {loading ? (
                     Array(3).fill(0).map((_, i) => (
-                        <div key={i} className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm animate-pulse">
+                        <div key={i} className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm animate-pulse">
                             <div className="h-4 bg-gray-200 rounded-full w-1/4 mb-6"></div>
                             <div className="h-8 bg-gray-100 rounded-xl w-3/4 mb-4"></div>
                             <div className="h-4 bg-gray-50 rounded-lg w-1/2 mb-10"></div>
@@ -461,7 +461,7 @@ const TechJobsTab = ({ token, user }) => {
 
             {/* Technician Job Detail Modal */}
             {selectedTicket && createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
                     <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 duration-500 border border-white/20">
                         <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                             <div className="flex items-center gap-4">
@@ -513,7 +513,7 @@ const TechJobsTab = ({ token, user }) => {
                                             </div>
                                         </section>
 
-                                        <section className="bg-emerald-900 rounded-[2rem] p-8 text-white shadow-2xl shadow-emerald-100 flex flex-col gap-6">
+                                        <section className="bg-emerald-900 rounded-4xl p-8 text-white shadow-2xl shadow-emerald-100 flex flex-col gap-6">
                                             <h4 className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.2em]">Operational Controls</h4>
 
                                             <div className="space-y-4">
@@ -645,7 +645,7 @@ const TechJobsTab = ({ token, user }) => {
                                             <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Deployment Stream</h4>
                                             <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100 tracking-widest">Live Updates</span>
                                         </div>
-                                        <div className="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
+                                        <div className="bg-white border border-gray-100 rounded-4xl p-8 shadow-sm">
                                             <TicketTimeline ticket={fullTicketDetails || selectedTicket} comments={ticketComments} />
                                         </div>
 
@@ -767,7 +767,7 @@ const TechnicianDashboard = () => {
                 bg-white border-r lg:border border-gray-100 lg:rounded-3xl shadow-2xl lg:shadow-lg shadow-gray-200/50 p-5 lg:h-fit h-screen overflow-y-auto
               `}
             >
-              <div className="flex items-center justify-between mb-6 lg:mb-4 lg:mt-0 mt-20 lg:mt-2">
+              <div className="flex items-center justify-between mb-6 lg:mb-4 mt-20 lg:mt-2">
                 <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Tech Panel</h2>
                 <button
                   onClick={() => setIsSidebarOpen(false)}
@@ -804,7 +804,7 @@ const TechnicianDashboard = () => {
               </nav>
 
               <div className="mt-8">
-                  <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-4 text-white shadow-lg">
+                  <div className="bg-linear-to-br from-emerald-600 to-emerald-800 rounded-2xl p-4 text-white shadow-lg">
                       <p className="text-xs font-bold opacity-80 mb-2 truncate">{user?.email}</p>
                       <button onClick={() => navigate('/home')} className="w-full bg-white/20 hover:bg-white/30 py-2 rounded-xl text-xs font-bold transition-colors">
                           User View
