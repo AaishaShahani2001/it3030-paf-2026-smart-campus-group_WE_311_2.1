@@ -11,6 +11,63 @@ import {
   UserCog,
 } from "lucide-react";
 
+const decodeJwtPayload = (token) => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((char) => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`)
+        .join("")
+    );
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+};
+
+const looksLikeEmail = (value) => typeof value === "string" && value.includes("@");
+const normalize = (value) => String(value || "").trim().toLowerCase();
+
+const getAuthUserId = (token) => {
+  if (!token) return "";
+  const payload = decodeJwtPayload(token);
+  return payload?.userId || payload?.id || payload?.uid || payload?.sub || "";
+};
+
+const getReporterEmailFromAuthState = () => {
+  const directKeys = ["reporterEmail", "userEmail", "email"];
+  for (const key of directKeys) {
+    const value = localStorage.getItem(key);
+    if (looksLikeEmail(value)) return value;
+  }
+
+  const userKeys = ["user", "authUser", "currentUser"];
+  for (const key of userKeys) {
+    const rawValue = localStorage.getItem(key);
+    if (!rawValue) continue;
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (looksLikeEmail(parsed?.email)) return parsed.email;
+    } catch {
+      // Ignore malformed JSON from unrelated localStorage values.
+    }
+  }
+
+  const tokenKeys = ["token", "accessToken", "jwt", "authToken"];
+  for (const key of tokenKeys) {
+    const token = localStorage.getItem(key);
+    if (!token) continue;
+    const payload = decodeJwtPayload(token);
+    if (looksLikeEmail(payload?.email)) return payload.email;
+    if (looksLikeEmail(payload?.sub)) return payload.sub;
+  }
+
+  return "";
+};
+
 const parseResponse = async (response) => {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -40,6 +97,8 @@ const AllTickets = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [expandedTicketId, setExpandedTicketId] = useState(null);
   const token = getToken();
+  const reporterEmail = getReporterEmailFromAuthState();
+  const authUserId = getAuthUserId(token);
 
   const fetchTickets = useCallback(async (opts = {}) => {
     const silent = Boolean(opts.silent);
@@ -54,12 +113,42 @@ const AllTickets = () => {
       setLoading(true);
     }
     try {
-      const response = await fetch("/api/tickets", {
+      const params = new URLSearchParams({ size: "200" });
+      if (reporterEmail) params.set("reporterEmail", reporterEmail);
+      if (authUserId) params.set("reporterId", String(authUserId));
+
+      const response = await fetch(`/api/v1/tickets?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const payload = await parseResponse(response);
       if (response.ok && payload?.success) {
-        setTickets(Array.isArray(payload.data) ? payload.data : []);
+        const list = payload?.data?.content || payload?.content || payload?.data || [];
+        const safeList = Array.isArray(list) ? list : [];
+
+        const filtered = safeList.filter((ticket) => {
+          const ticketReporterEmail = normalize(
+            ticket?.reporterEmail ||
+              ticket?.reporter?.email ||
+              ticket?.reporter?.user?.email ||
+              ticket?.createdBy?.email
+          );
+          const ticketReporterId = normalize(
+            ticket?.reporterId ||
+              ticket?.reporter?.id ||
+              ticket?.createdBy?.id ||
+              ticket?.userId
+          );
+
+          if (reporterEmail && ticketReporterEmail) {
+            return ticketReporterEmail === normalize(reporterEmail);
+          }
+          if (authUserId && ticketReporterId) {
+            return ticketReporterId === normalize(authUserId);
+          }
+          return true;
+        });
+
+        setTickets(filtered);
       } else {
         const msg =
           payload?.message ||
@@ -78,7 +167,7 @@ const AllTickets = () => {
         setLoading(false);
       }
     }
-  }, [token]);
+  }, [authUserId, reporterEmail, token]);
 
   useEffect(() => {
     fetchTickets();
@@ -92,7 +181,7 @@ const AllTickets = () => {
     return (
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex items-start gap-3">
         <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-        <p>Sign in to see the issues you have reported.</p>
+        <p>Sign in to load your ticket history.</p>
       </div>
     );
   }
