@@ -43,12 +43,18 @@ public class JwtUtil {
     }
 
     public String extractUsername(String token) {
-        Claims claims = Jwts.parserBuilder()
+        return extractAllClaims(token).getSubject();
+    }
+
+    public String extractEmail(String token) {
+        return extractAllClaims(token).get("email", String.class);
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
                 .setSigningKey(getSignKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-
-        return claims.getSubject();
     }
 }

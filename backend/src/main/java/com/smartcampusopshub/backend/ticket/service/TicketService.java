@@ -64,4 +64,11 @@ public class TicketService {
 
         return TicketMapper.toResponseDto(savedTicket);
     }
+
+    @Transactional(readOnly = true)
+    public List<TicketResponseDto> listTicketsForReporterEmail(String email) {
+        return ticketRepository.findAllByReporterEmail(email).stream()
+                .map(TicketMapper::toResponseDto)
+                .toList();
+    }
 }
