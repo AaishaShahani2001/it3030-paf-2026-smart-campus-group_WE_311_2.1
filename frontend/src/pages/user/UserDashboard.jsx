@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -19,8 +19,27 @@ const sidebarLinks = [
 const UserDashboard = () => {
   const location = useLocation();
   const currentUsername = localStorage.getItem("username") || "Student";
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sectionParam = params.get("section");
+    const hashSection = window.location.hash.replace("#", "");
+    if (sectionParam === "tickets" || hashSection === "tickets") return "tickets";
+    return "overview";
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const sectionParam = params.get("section");
+    const hashSection = location.hash.replace("#", "");
+    if (sectionParam === "tickets" || hashSection === "tickets") {
+      setActiveSection("tickets");
+      return;
+    }
+    if (sectionParam === "overview" || hashSection === "overview") {
+      setActiveSection("overview");
+    }
+  }, [location.hash, location.search]);
 
   return (
     <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
