@@ -286,6 +286,8 @@ const TechJobsTab = ({ token, user }) => {
     const [rejectionReason, setRejectionReason] = useState('');
     const [showRejectBox, setShowRejectBox] = useState(false);
     const [attachmentError, setAttachmentError] = useState("");
+    const [newComment, setNewComment] = useState("");
+    const [isPostingComment, setIsPostingComment] = useState(false);
 
     const fetchAssignedTickets = async () => {
         try {
@@ -316,6 +318,7 @@ const TechJobsTab = ({ token, user }) => {
             setShowResolutionBox(false);
             setRejectionReason('');
             setShowRejectBox(false);
+            setNewComment("");
             return;
         }
 
@@ -348,6 +351,49 @@ const TechJobsTab = ({ token, user }) => {
 
         fetchTicketDetails();
     }, [selectedTicket, token]);
+
+    const refreshComments = async (ticketId) => {
+        if (!ticketId || !token) return;
+        try {
+            const commentsRes = await fetch(`/api/v1/tickets/${ticketId}/comments`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const commentsPayload = await parseResponse(commentsRes);
+            if (commentsRes.ok && commentsPayload?.success) {
+                setTicketComments(commentsPayload.data.content || []);
+            }
+        } catch (err) {
+            console.error("Comment refresh failed", err);
+        }
+    };
+
+    const handlePostComment = async () => {
+        const trimmed = newComment.trim();
+        if (!trimmed) return;
+        if (!selectedTicket?.id || !token) return;
+
+        setIsPostingComment(true);
+        try {
+            const response = await fetch(`/api/v1/tickets/${selectedTicket.id}/comments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ content: `Technician update: ${trimmed}` })
+            });
+            if (!response.ok) {
+                const payload = await parseResponse(response);
+                throw new Error(payload?.message || "Failed to post comment.");
+            }
+            setNewComment("");
+            await refreshComments(selectedTicket.id);
+        } catch (err) {
+            console.error("Post comment failed", err);
+        } finally {
+            setIsPostingComment(false);
+        }
+    };
 
     const handleUpdateStatus = async (newStatus) => {
         if (newStatus === 'RESOLVED' && !resolutionNotes.trim()) {
@@ -647,6 +693,33 @@ const TechJobsTab = ({ token, user }) => {
                                         </div>
                                         <div className="bg-white border border-gray-100 rounded-4xl p-8 shadow-sm">
                                             <TicketTimeline ticket={fullTicketDetails || selectedTicket} comments={ticketComments} />
+
+                                            {selectedTicket.status === 'IN_PROGRESS' && (
+                                                <div className="mt-6 pt-6 border-t border-gray-100">
+                                                    <label htmlFor="tech-comment" className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">
+                                                        Add Update / Reply to Admin
+                                                    </label>
+                                                    <textarea
+                                                        id="tech-comment"
+                                                        rows={3}
+                                                        value={newComment}
+                                                        onChange={(e) => setNewComment(e.target.value)}
+                                                        placeholder="Share progress, ask a question, or respond to the admin..."
+                                                        disabled={isPostingComment}
+                                                        className="w-full rounded-2xl border border-gray-200 bg-white text-sm text-gray-800 p-3 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none resize-none transition disabled:opacity-60"
+                                                    />
+                                                    <div className="mt-2 flex justify-end">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handlePostComment}
+                                                            disabled={isPostingComment || !newComment.trim()}
+                                                            className="bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                                        >
+                                                            {isPostingComment ? "Posting..." : "Post Comment"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {Array.isArray(fullTicketDetails?.attachments) && fullTicketDetails.attachments.length > 0 && (
