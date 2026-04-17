@@ -120,12 +120,23 @@ public class TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
         User actor = getActor(actorUsername);
 
+        TicketStatus previous = ticket.getStatus();
         TicketStatus next = request.getStatus();
         ticket.setStatus(next);
 
-        if (next == TicketStatus.IN_PROGRESS && ticket.getFirstResponseAt() == null) {
-            ticket.setFirstResponseAt(LocalDateTime.now());
-            addCommentInternal(ticket, actor, "Technician started assessment.");
+        if (next == TicketStatus.IN_PROGRESS) {
+            if (ticket.getFirstResponseAt() == null) {
+                ticket.setFirstResponseAt(LocalDateTime.now());
+                addCommentInternal(ticket, actor, "Technician started assessment.");
+            }
+            if (previous == TicketStatus.RESOLVED) {
+                ticket.setResolvedAt(null);
+                ticket.setResolutionNotes(null);
+                String note = StringUtils.hasText(request.getReason())
+                        ? request.getReason().trim()
+                        : "Admin reopened the ticket — additional work required.";
+                addCommentInternal(ticket, actor, "Reopened: " + note);
+            }
         }
 
         if (next == TicketStatus.RESOLVED) {
@@ -143,6 +154,11 @@ public class TicketService {
             ticket.setRejectionReason(request.getReason().trim());
             ticket.setResolvedAt(null);
             addCommentInternal(ticket, actor, "Rejected: " + request.getReason().trim());
+        } else if (next == TicketStatus.CLOSED) {
+            String note = StringUtils.hasText(request.getResolutionNotes())
+                    ? request.getResolutionNotes().trim()
+                    : "Ticket closed by admin after resolution.";
+            addCommentInternal(ticket, actor, "Closed: " + note);
         }
 
         Ticket saved = ticketRepository.save(ticket);
