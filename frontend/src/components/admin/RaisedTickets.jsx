@@ -1,8 +1,36 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Eye, X } from "lucide-react";
+import {
+  Eye,
+  X,
+  Search,
+  RefreshCw,
+  Inbox,
+  Clock,
+  Wrench,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { getToken } from "../../utils/auth";
+
+const STATUS_META = {
+  OPEN: { label: "Open", dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-200" },
+  IN_PROGRESS: { label: "In Progress", dot: "bg-blue-500", chip: "bg-blue-50 text-blue-700 ring-blue-200" },
+  RESOLVED: { label: "Resolved", dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+  CLOSED: { label: "Closed", dot: "bg-gray-400", chip: "bg-gray-100 text-gray-700 ring-gray-200" },
+  REJECTED: { label: "Rejected", dot: "bg-rose-500", chip: "bg-rose-50 text-rose-700 ring-rose-200" },
+};
+
+const PRIORITY_META = {
+  LOW: { label: "Low", chip: "bg-slate-50 text-slate-600 ring-slate-200" },
+  MEDIUM: { label: "Medium", chip: "bg-sky-50 text-sky-700 ring-sky-200" },
+  HIGH: { label: "High", chip: "bg-orange-50 text-orange-700 ring-orange-200" },
+  CRITICAL: { label: "Critical", chip: "bg-rose-50 text-rose-700 ring-rose-200" },
+};
+
+const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.OPEN;
+const getPriorityMeta = (priority) => PRIORITY_META[priority] || PRIORITY_META.MEDIUM;
 
 const parseResponse = async (response) => {
   const contentType = response.headers.get("content-type") || "";
@@ -127,6 +155,44 @@ const RaisedTickets = () => {
   const [adminComment, setAdminComment] = useState("");
   const [replyComment, setReplyComment] = useState("");
   const [isPostingReply, setIsPostingReply] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const visibleTickets = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const sorted = [...tickets].sort((a, b) => {
+      const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+    return sorted.filter((ticket) => {
+      if (statusFilter !== "ALL" && (ticket.status || "OPEN") !== statusFilter) return false;
+      if (!query) return true;
+      const haystack = [
+        ticket.title,
+        ticket.reporterName,
+        ticket.assigneeName,
+        ticket.category,
+        ticket.status,
+        ticket.priority,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [tickets, search, statusFilter]);
+
+  const stats = useMemo(() => {
+    const counts = { total: tickets.length, open: 0, inProgress: 0, resolved: 0 };
+    tickets.forEach((t) => {
+      const s = t.status || "OPEN";
+      if (s === "OPEN") counts.open += 1;
+      else if (s === "IN_PROGRESS") counts.inProgress += 1;
+      else if (s === "RESOLVED") counts.resolved += 1;
+    });
+    return counts;
+  }, [tickets]);
 
   const getAllTickets = async () => {
     if (!token) {
@@ -394,113 +460,186 @@ const RaisedTickets = () => {
 
   return (
     <div className="animate-fade-in-up">
-      <div className="mb-8 flex justify-between items-end">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">All Tickets</h1>
-          <p className="mt-1 text-sm text-gray-500">Monitor raised tickets across campus operations.</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">All Tickets</h1>
+          <p className="mt-1 text-sm text-gray-500">Monitor, assign, and track tickets raised across campus operations.</p>
         </div>
         <button
           onClick={getAllTickets}
-          className="p-2 text-gray-500 hover:text-indigo-600 transition-colors"
-          title="Refresh tickets"
+          disabled={loading}
+          className="inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2 rounded-lg bg-white border border-gray-200 text-gray-700 hover:text-emerald-700 hover:border-emerald-200 hover:bg-emerald-50 text-sm font-medium shadow-sm transition disabled:opacity-60"
         >
-          <svg className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh
         </button>
       </div>
 
-      <div className="bg-white rounded-4xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: "Total", value: stats.total, Icon: Inbox, tone: "text-gray-600 bg-gray-100" },
+          { label: "Open", value: stats.open, Icon: Clock, tone: "text-amber-600 bg-amber-50" },
+          { label: "In Progress", value: stats.inProgress, Icon: Wrench, tone: "text-blue-600 bg-blue-50" },
+          { label: "Resolved", value: stats.resolved, Icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50" },
+        ].map(({ label, value, Icon, tone }) => (
+          <div key={label} className="bg-white border border-gray-100 rounded-xl px-5 py-4 shadow-sm flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tone}`}>
+              <Icon className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500">{label}</p>
+              <p className="text-xl font-semibold text-gray-900 leading-tight">{value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="relative w-full md:max-w-sm">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by title, reporter, assignee..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition"
+            />
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto">
+            {["ALL", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"].map((key) => {
+              const active = statusFilter === key;
+              const label = key === "ALL" ? "All" : getStatusMeta(key).label;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setStatusFilter(key)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition whitespace-nowrap ${
+                    active
+                      ? "bg-gray-900 text-white border-gray-900"
+                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50 border-b border-gray-100">
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Title</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Origin</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Assignee</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-right">View</th>
+          <table className="w-full text-left">
+            <thead className="bg-gray-50/60 border-b border-gray-100">
+              <tr>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500">Ticket</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500">Reporter</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500">Priority</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500">Status</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500">Assignee</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500">Created</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="px-8 py-20 text-center">
+                  <td colSpan="7" className="px-5 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
-                      <p className="text-xs font-bold text-gray-400 animate-pulse uppercase tracking-widest">Hydrating table...</p>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                      <p className="text-sm font-medium text-gray-500">Loading tickets...</p>
                     </div>
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="5" className="px-8 py-20 text-center">
-                    <p className="text-sm font-bold text-red-500">{error}</p>
+                  <td colSpan="7" className="px-5 py-16 text-center">
+                    <p className="text-sm font-medium text-rose-600">{error}</p>
                   </td>
                 </tr>
-              ) : tickets.length === 0 ? (
+              ) : visibleTickets.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-8 py-20 text-center">
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No active cases found.</p>
+                  <td colSpan="7" className="px-5 py-16 text-center">
+                    <p className="text-sm font-medium text-gray-500">
+                      {tickets.length === 0 ? "No tickets have been raised yet." : "No tickets match the current filters."}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-emerald-50/30 transition-all group">
-                    <td className="px-8 py-5">
-                      <div>
-                        <p className="text-sm font-black text-gray-900 group-hover:text-emerald-700 transition-colors uppercase tracking-tight truncate max-w-70">
+                visibleTickets.map((ticket) => {
+                  const statusMeta = getStatusMeta(ticket.status);
+                  const priorityMeta = getPriorityMeta(ticket.priority);
+                  const createdLabel = ticket.createdAt
+                    ? new Date(ticket.createdAt).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "—";
+                  return (
+                    <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-4 align-middle">
+                        <p className="text-sm font-semibold text-gray-900 truncate max-w-[18rem]">
                           {ticket.title || "Untitled"}
                         </p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic">
-                          {(ticket.category || "OTHER").replace("_", " ")}
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {(ticket.category || "OTHER").replace(/_/g, " ")}
                         </p>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <p className="text-sm font-black text-gray-700 uppercase tracking-tight">{ticket.reporterName || "Unknown"}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : "-"}
-                      </p>
-                    </td>
-                    <td className="px-8 py-5">
-                      <span
-                        className={`inline-flex items-center rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest border ${
-                          ticket.status === "RESOLVED"
-                            ? "bg-green-50 text-green-700 border-green-100"
-                            : ticket.status === "CLOSED"
-                              ? "bg-gray-100 text-gray-700 border-gray-200"
-                              : ticket.status === "REJECTED"
-                                ? "bg-red-50 text-red-700 border-red-100"
-                                : ticket.status === "IN_PROGRESS"
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                  : "bg-amber-50 text-amber-700 border-amber-100"
-                        }`}
-                      >
-                        {ticket.status || "PENDING"}
-                      </span>
-                    </td>
-                    <td className="px-8 py-5">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-700">
-                        {ticket.assigneeName || "Unassigned"}
-                      </span>
-                    </td>
-                    <td className="px-8 py-5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => openDetails(ticket)}
-                        className="inline-flex items-center gap-2 text-emerald-700 hover:text-white font-black text-[10px] uppercase tracking-widest bg-emerald-50 hover:bg-emerald-600 px-4 py-2 rounded-xl border border-emerald-100 transition-all active:scale-95"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <p className="text-sm font-medium text-gray-800">{ticket.reporterName || "Unknown"}</p>
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${priorityMeta.chip}`}>
+                          {(ticket.priority === "HIGH" || ticket.priority === "CRITICAL") && (
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                          )}
+                          {priorityMeta.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusMeta.chip}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`} />
+                          {statusMeta.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <span className={`text-sm ${ticket.assigneeName ? "text-gray-800 font-medium" : "text-gray-400 italic"}`}>
+                          {ticket.assigneeName || "Unassigned"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <span className="text-xs text-gray-500">{createdLabel}</span>
+                      </td>
+                      <td className="px-5 py-4 align-middle text-right">
+                        <button
+                          type="button"
+                          onClick={() => openDetails(ticket)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-white bg-emerald-50 hover:bg-emerald-600 border border-emerald-100 hover:border-emerald-600 px-3 py-1.5 rounded-md transition active:scale-95"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+
+        {!loading && !error && visibleTickets.length > 0 && (
+          <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between text-xs text-gray-500">
+            <span>
+              Showing <span className="font-semibold text-gray-700">{visibleTickets.length}</span> of{" "}
+              <span className="font-semibold text-gray-700">{tickets.length}</span> tickets
+            </span>
+            <span className="hidden sm:inline">Sorted by newest first</span>
+          </div>
+        )}
       </div>
 
       {selectedTicket &&
@@ -534,14 +673,37 @@ const RaisedTickets = () => {
                         <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Description</p>
                         <p className="text-sm text-gray-700 leading-relaxed">{ticketDetails?.description || selectedTicket?.description || "No description available."}</p>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Status</p>
-                          <p className="text-sm font-black text-gray-900">{ticketDetails?.status || selectedTicket?.status || "-"}</p>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2">Status</p>
+                          {(() => {
+                            const meta = getStatusMeta(ticketDetails?.status || selectedTicket?.status);
+                            return (
+                              <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${meta.chip}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                                {meta.label}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2">Priority</p>
+                          {(() => {
+                            const meta = getPriorityMeta(ticketDetails?.priority || selectedTicket?.priority);
+                            const priority = ticketDetails?.priority || selectedTicket?.priority;
+                            return (
+                              <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${meta.chip}`}>
+                                {(priority === "HIGH" || priority === "CRITICAL") && (
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                )}
+                                {meta.label}
+                              </span>
+                            );
+                          })()}
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                           <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Location</p>
-                          <p className="text-sm font-black text-gray-900">{ticketDetails?.location || selectedTicket?.location || "-"}</p>
+                          <p className="text-sm font-semibold text-gray-900">{ticketDetails?.location || selectedTicket?.location || "—"}</p>
                         </div>
                       </div>
 
