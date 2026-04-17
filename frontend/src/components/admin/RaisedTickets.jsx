@@ -121,6 +121,12 @@ const RaisedTickets = () => {
   const [technicians, setTechnicians] = useState([]);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [adminComment, setAdminComment] = useState("");
+  const [replyComment, setReplyComment] = useState("");
+  const [isPostingReply, setIsPostingReply] = useState(false);
 
   const getAllTickets = async () => {
     if (!token) {
@@ -169,10 +175,31 @@ const RaisedTickets = () => {
     }
   };
 
+  const fetchTicketComments = async (ticketId) => {
+    if (!token || !ticketId) return;
+    try {
+      setLoadingComments(true);
+      const commentsRes = await fetch(`/api/v1/tickets/${ticketId}/comments?size=200`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const commentsPayload = await parseResponse(commentsRes);
+      if (commentsRes.ok && commentsPayload?.success) {
+        setTicketComments(commentsPayload?.data?.content || []);
+      } else {
+        setTicketComments([]);
+      }
+    } catch {
+      setTicketComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
   const openDetails = async (ticket) => {
     setSelectedTicket(ticket);
     setTicketDetails(ticket);
     setSelectedTechnicianId("");
+    setReplyComment("");
     if (!token || !ticket?.id) return;
 
     try {
@@ -188,21 +215,11 @@ const RaisedTickets = () => {
       setTicketDetails(detailPayload);
       setSelectedTechnicianId(detailPayload?.assignee?.id || "");
 
-      setLoadingComments(true);
-      const commentsRes = await fetch(`/api/v1/tickets/${ticket.id}/comments?size=200`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const commentsPayload = await parseResponse(commentsRes);
-      if (commentsRes.ok && commentsPayload?.success) {
-        setTicketComments(commentsPayload?.data?.content || []);
-      } else {
-        setTicketComments([]);
-      }
+      await fetchTicketComments(ticket.id);
       toast.success("Loaded ticket details.");
     } catch (err) {
       toast.error(err.message || "Using basic ticket details.");
     } finally {
-      setLoadingComments(false);
       setLoadingDetails(false);
     }
   };
@@ -237,6 +254,136 @@ const RaisedTickets = () => {
       toast.error(err.message || "Technician assignment failed.");
     } finally {
       setIsAssigning(false);
+    }
+  };
+
+  const openCloseModal = () => {
+    setAdminComment("");
+    setShowCloseModal(true);
+  };
+
+  const postAdminComment = async (ticketId, content) => {
+    if (!content || !token) return;
+    try {
+      await fetch(`/api/v1/tickets/${ticketId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content }),
+      });
+    } catch {
+      // Non-fatal: the primary status update already succeeded.
+    }
+  };
+
+  const submitReplyComment = async () => {
+    const trimmed = replyComment.trim();
+    if (!trimmed) {
+      toast.warning("Type a reply before sending.");
+      return;
+    }
+    if (!selectedTicket?.id) return;
+    if (!token) {
+      toast.error("Authentication token missing.");
+      return;
+    }
+    try {
+      setIsPostingReply(true);
+      const response = await fetch(`/api/v1/tickets/${selectedTicket.id}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content: `Admin reply: ${trimmed}` }),
+      });
+      const payload = await parseResponse(response);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to post reply.");
+      }
+      setReplyComment("");
+      await fetchTicketComments(selectedTicket.id);
+      toast.success("Reply sent to technician.");
+    } catch (err) {
+      toast.error(err.message || "Unable to post reply.");
+    } finally {
+      setIsPostingReply(false);
+    }
+  };
+
+  const closeTicket = async () => {
+    if (!selectedTicket?.id) return;
+    if (!token) {
+      toast.error("Authentication token missing.");
+      return;
+    }
+
+    try {
+      setIsClosing(true);
+      const body = { status: "CLOSED" };
+      const trimmed = adminComment.trim();
+      if (trimmed) body.resolutionNotes = trimmed;
+
+      const response = await fetch(`/api/v1/tickets/${selectedTicket.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const payload = await parseResponse(response);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to close ticket.");
+      }
+      toast.success("Ticket closed successfully.");
+      await getAllTickets();
+      setShowCloseModal(false);
+      setSelectedTicket(null);
+    } catch (err) {
+      toast.error(err.message || "Unable to close ticket.");
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  const sendBackToTechnician = async () => {
+    if (!selectedTicket?.id) return;
+    if (!token) {
+      toast.error("Authentication token missing.");
+      return;
+    }
+    const trimmed = adminComment.trim();
+    if (!trimmed) {
+      toast.warning("Please add a comment for the technician before sending back.");
+      return;
+    }
+
+    try {
+      setIsReopening(true);
+      const response = await fetch(`/api/v1/tickets/${selectedTicket.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "IN_PROGRESS", reason: trimmed }),
+      });
+      const payload = await parseResponse(response);
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to reopen ticket.");
+      }
+      await postAdminComment(selectedTicket.id, `Admin feedback: ${trimmed}`);
+      toast.success("Ticket sent back to the technician.");
+      await getAllTickets();
+      setShowCloseModal(false);
+      setSelectedTicket(null);
+    } catch (err) {
+      toast.error(err.message || "Unable to reopen ticket.");
+    } finally {
+      setIsReopening(false);
     }
   };
 
@@ -321,11 +468,13 @@ const RaisedTickets = () => {
                         className={`inline-flex items-center rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest border ${
                           ticket.status === "RESOLVED"
                             ? "bg-green-50 text-green-700 border-green-100"
-                            : ticket.status === "REJECTED"
-                              ? "bg-red-50 text-red-700 border-red-100"
-                              : ticket.status === "IN_PROGRESS"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                : "bg-amber-50 text-amber-700 border-amber-100"
+                            : ticket.status === "CLOSED"
+                              ? "bg-gray-100 text-gray-700 border-gray-200"
+                              : ticket.status === "REJECTED"
+                                ? "bg-red-50 text-red-700 border-red-100"
+                                : ticket.status === "IN_PROGRESS"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                  : "bg-amber-50 text-amber-700 border-amber-100"
                         }`}
                       >
                         {ticket.status || "PENDING"}
@@ -396,6 +545,21 @@ const RaisedTickets = () => {
                         </div>
                       </div>
 
+                      {(ticketDetails?.status || selectedTicket?.status) === "RESOLVED" && (
+                        <section className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-xl shadow-gray-200">
+                          <h4 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-2">Review Resolution</h4>
+                          <p className="text-xs text-gray-300 leading-relaxed mb-4">
+                            The technician marked this ticket as resolved. Close the case to finalize, or send it back with feedback if more work is required.
+                          </p>
+                          <button
+                            onClick={openCloseModal}
+                            className="w-full bg-white text-gray-900 font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-gray-100 transition-all active:scale-95"
+                          >
+                            Review & Finalize
+                          </button>
+                        </section>
+                      )}
+
                       <section className="bg-emerald-900 rounded-2xl p-6 text-white shadow-xl shadow-emerald-100">
                         <h4 className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.2em] mb-4">Assign Technician</h4>
                         <div className="space-y-4">
@@ -414,13 +578,25 @@ const RaisedTickets = () => {
                               ))}
                             </select>
                           </div>
-                          <button
-                            onClick={assignTechnician}
-                            disabled={isAssigning || !selectedTechnicianId}
-                            className="w-full bg-white text-emerald-900 font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                          >
-                            {isAssigning ? "Assigning..." : "Confirm Assignment"}
-                          </button>
+                          {(() => {
+                            const currentAssigneeId = ticketDetails?.assignee?.id || "";
+                            const alreadyAssigned = Boolean(currentAssigneeId) && currentAssigneeId === selectedTechnicianId;
+                            return (
+                              <button
+                                onClick={assignTechnician}
+                                disabled={isAssigning || !selectedTechnicianId || alreadyAssigned}
+                                className="w-full bg-white text-emerald-900 font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              >
+                                {isAssigning
+                                  ? "Assigning..."
+                                  : alreadyAssigned
+                                    ? "Technician Assigned"
+                                    : currentAssigneeId
+                                      ? "Reassign Technician"
+                                      : "Confirm Assignment"}
+                              </button>
+                            );
+                          })()}
                         </div>
                       </section>
 
@@ -461,6 +637,13 @@ const RaisedTickets = () => {
                             </div>
                           )}
 
+                          {(ticketDetails?.status || selectedTicket?.status) === "CLOSED" && (
+                            <div className="rounded-xl border border-gray-200 bg-gray-100 p-3">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-gray-700">Status: Closed</p>
+                              <p className="text-xs text-gray-700 mt-1">Ticket finalized by admin.</p>
+                            </div>
+                          )}
+
                           {loadingComments ? (
                             <p className="text-xs font-semibold text-gray-500">Loading comments...</p>
                           ) : ticketComments.length === 0 ? (
@@ -480,10 +663,109 @@ const RaisedTickets = () => {
                             ))
                           )}
                         </div>
+
+                        {(ticketDetails?.status || selectedTicket?.status) === "IN_PROGRESS" && (
+                          <div className="mt-5 pt-5 border-t border-gray-100">
+                            <label htmlFor="admin-reply" className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">
+                              Reply to Technician
+                            </label>
+                            <textarea
+                              id="admin-reply"
+                              rows={3}
+                              value={replyComment}
+                              onChange={(e) => setReplyComment(e.target.value)}
+                              placeholder="Share guidance, ask for an update, or clarify the scope..."
+                              disabled={isPostingReply}
+                              className="w-full rounded-2xl border border-gray-200 bg-white text-sm text-gray-800 p-3 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none resize-none transition disabled:opacity-60"
+                            />
+                            <div className="mt-2 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={submitReplyComment}
+                                disabled={isPostingReply || !replyComment.trim()}
+                                className="bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                              >
+                                {isPostingReply ? "Sending..." : "Send Reply"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {showCloseModal && selectedTicket &&
+        createPortal(
+          <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-white/20 animate-fade-in-up">
+              <div className="px-7 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Review Resolution</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-0.5">
+                    Reference: #{String(selectedTicket.id ?? "").slice(0, 8)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCloseModal(false)}
+                  disabled={isClosing || isReopening}
+                  className="p-2 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-gray-900 hover:border-gray-900 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="px-7 py-6 space-y-5">
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Ticket</p>
+                  <p className="text-sm font-bold text-gray-900">{selectedTicket.title}</p>
+                </div>
+
+                <div>
+                  <label htmlFor="admin-comment" className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">
+                    Comment to Technician
+                    <span className="text-gray-400 normal-case font-semibold tracking-normal ml-1">
+                      (required to send back)
+                    </span>
+                  </label>
+                  <textarea
+                    id="admin-comment"
+                    rows={4}
+                    value={adminComment}
+                    onChange={(e) => setAdminComment(e.target.value)}
+                    placeholder="e.g. Issue is not fully resolved — please revisit and fix the leak near the second floor."
+                    disabled={isClosing || isReopening}
+                    className="w-full rounded-2xl border border-gray-200 bg-white text-sm text-gray-800 p-3 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none resize-none transition disabled:opacity-60"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    Leave empty and choose <span className="font-bold">Close Ticket</span> if you're satisfied with the resolution.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={sendBackToTechnician}
+                    disabled={isClosing || isReopening || !adminComment.trim()}
+                    className="flex-1 bg-amber-500 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    {isReopening ? "Sending..." : "Send Back to Technician"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeTicket}
+                    disabled={isClosing || isReopening}
+                    className="flex-1 bg-gray-900 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    {isClosing ? "Closing..." : "Close Ticket"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>,
