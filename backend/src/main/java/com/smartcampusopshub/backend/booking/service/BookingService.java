@@ -1,6 +1,8 @@
 package com.smartcampusopshub.backend.booking.service;
 
 import com.smartcampusopshub.backend.common.exception.ConflictException;
+import com.smartcampusopshub.backend.booking.dto.BookingResponseDTO;
+import com.smartcampusopshub.backend.booking.dto.CreateBookingDTO;
 import com.smartcampusopshub.backend.booking.entity.Booking;
 import com.smartcampusopshub.backend.booking.repository.BookingRepository;
 
@@ -17,12 +19,16 @@ public class BookingService {
     private final BookingRepository bookingRepository;
 
     // CREATE BOOKING
-    public Booking createBooking(Booking booking) {
+    public BookingResponseDTO createBooking(CreateBookingDTO dto) {
 
-        // ✅ Default status
-        if (booking.getStatus() == null) {
-            booking.setStatus("PENDING");
-        }
+        Booking booking = new Booking();
+        booking.setUserId(dto.getUserId());
+        booking.setResourceId(dto.getResourceId());
+        booking.setStartTime(dto.getStartTime());
+        booking.setEndTime(dto.getEndTime());
+        booking.setPurpose(dto.getPurpose());
+        booking.setAttendees(dto.getAttendees());
+        booking.setStatus("PENDING");
 
         List<Booking> conflicts = bookingRepository
                 .findByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
@@ -31,24 +37,24 @@ public class BookingService {
                         booking.getStartTime()
                 );
 
-        // 🔥 IF CONFLICT → AUTO SLOT
         if (!conflicts.isEmpty()) {
-
-            String nextSlot = findNextAvailableSlot(
-                    booking.getResourceId(),
-                    booking.getStartTime(),
-                    booking.getEndTime()
-            );
-
             booking.setStatus("WAITLIST");
             Booking saved = bookingRepository.save(booking);
 
-            throw new ConflictException("WAITLIST|" + nextSlot);
-                    }
+            return new BookingResponseDTO(
+                    saved.getId(),
+                    "WAITLIST",
+                    "Booking added to waitlist"
+            );
+        }
 
+        Booking saved = bookingRepository.save(booking);
 
-        // ✅ SAVE IF NO CONFLICT
-        return bookingRepository.save(booking);
+        return new BookingResponseDTO(
+                saved.getId(),
+                "APPROVED",
+                "Booking created successfully"
+        );
     }
 
     // GET ALL
