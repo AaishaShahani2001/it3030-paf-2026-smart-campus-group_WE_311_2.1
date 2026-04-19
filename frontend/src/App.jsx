@@ -11,6 +11,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import UserDashboard from "./pages/user/UserDashboard";
 import ReportAnIssue from "./pages/ReportAnIssue";
+import Resources from './pages/Resources';
 
 const AppLayout = ({ children }) => (
   <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -27,6 +28,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<AppLayout><Home /></AppLayout>} />
+        <Route path="/resources" element={<AppLayout><Resources /></AppLayout>} />
         <Route path="/admin/dashboard" element={<AppLayout><AdminDashboard /></AppLayout>} />
         <Route path="/technician/dashboard" element={<AppLayout><TechnicianDashboard /></AppLayout>} />
         <Route path="/user/dashboard" element={<AppLayout><UserDashboard /></AppLayout>} />
