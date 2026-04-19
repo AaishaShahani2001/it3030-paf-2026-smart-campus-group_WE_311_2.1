@@ -20,11 +20,33 @@ const Login = () => {
     setIsSubmitting(true);
     try {
       const res = await loginUser({ username, password });
-      const token = typeof res.data === "string" ? res.data : "";
+      const token = typeof res.data === "string" ? res.data : res.data?.token || "";
+      const role = typeof res.data === "object" ? res.data?.role : null;
+      const normalizedRole = typeof role === "string" ? role.trim().toUpperCase() : null;
+      const responseUsername = typeof res.data === "object" ? res.data?.username : null;
+      const responseEmail = typeof res.data === "object" ? res.data?.email : null;
       setToken(token);
-      localStorage.setItem("username", username.trim());
+      localStorage.setItem("username", (responseUsername || username).trim());
+      if (responseEmail) {
+        localStorage.setItem("userEmail", responseEmail);
+      }
+      if (normalizedRole) {
+        localStorage.setItem("role", normalizedRole);
+      }
       toast.success("Login successful.");
-      navigate("/home");
+      switch (normalizedRole) {
+        case "ADMIN":
+          navigate("/admin/dashboard");
+          break;
+        case "USER":
+          navigate("/user/dashboard");
+          break;
+        case "TECHNICIAN":
+          navigate("/technician/dashboard");
+          break;
+        default:
+          navigate("/home");
+      }
     } catch (err) {
       const message =
         err?.response?.data?.message ||

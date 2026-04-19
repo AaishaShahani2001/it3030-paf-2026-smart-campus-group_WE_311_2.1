@@ -98,25 +98,33 @@ const ReportAnIssue = () => {
         throw new Error("Could not detect logged-in user email. Please login again.");
       }
 
-      if (attachments.length > 0) {
-        toast.info("Attachments are not uploaded yet. Ticket will be submitted without files.");
-      }
+      const formData = new FormData();
+      formData.append(
+        "ticket",
+        new Blob(
+          [
+            JSON.stringify({
+              title: ticketForm.title,
+              description: ticketForm.description,
+              category: ticketForm.category,
+              priority: ticketForm.priority,
+              location: ticketForm.location,
+              contactPhone: ticketForm.contactPhone || null,
+              contactEmail: ticketForm.contactEmail || null,
+              reporterEmail: ticketForm.reporterEmail,
+            }),
+          ],
+          { type: "application/json" }
+        )
+      );
+
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
 
       const response = await fetch(TICKET_API_BASE, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: ticketForm.title,
-          description: ticketForm.description,
-          category: ticketForm.category,
-          priority: ticketForm.priority,
-          location: ticketForm.location,
-          contactPhone: ticketForm.contactPhone || null,
-          contactEmail: ticketForm.contactEmail || null,
-          reporterEmail: ticketForm.reporterEmail,
-        }),
+        body: formData,
       });
 
       let data = null;

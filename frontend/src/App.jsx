@@ -8,6 +8,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminPage from "./pages/AdminPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import TechnicianDashboard from './pages/technician/TechnicianDashboard';
+import UserDashboard from "./pages/user/UserDashboard";
 import ReportAnIssue from "./pages/ReportAnIssue";
 
 const AppLayout = ({ children }) => (
@@ -26,6 +28,8 @@ const App = () => {
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<AppLayout><Home /></AppLayout>} />
         <Route path="/admin/dashboard" element={<AppLayout><AdminDashboard /></AppLayout>} />
+        <Route path="/technician/dashboard" element={<AppLayout><TechnicianDashboard /></AppLayout>} />
+        <Route path="/user/dashboard" element={<AppLayout><UserDashboard /></AppLayout>} />
         <Route path="/admin/facilities" element={<AppLayout><AdminPage /></AppLayout>} />
         <Route path="/admin/bookings" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/report-an-issue" element={<AppLayout><ReportAnIssue /></AppLayout>} />

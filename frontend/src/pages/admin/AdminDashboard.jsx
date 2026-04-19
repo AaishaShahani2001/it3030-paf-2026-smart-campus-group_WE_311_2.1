@@ -3,16 +3,17 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Wrench,
-  AlertTriangle,
+  Ticket,
   ChevronRight,
   Menu,
   X,
 } from "lucide-react";
+import RaisedTickets from "../../components/admin/RaisedTickets";
 
 const sidebarLinks = [
-  { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
-  { label: "Manage Facilities", to: "/admin/facilities", icon: Wrench },
-  { label: "Issue Reports", to: "/report-an-issue", icon: AlertTriangle },
+  { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard, view: "overview" },
+  { label: "Manage Facilities", to: "/admin/facilities", icon: Wrench, view: "facilities" },
+  { label: "Raised Tickets", to: "/admin/dashboard", icon: Ticket, view: "tickets" },
 ];
 
 const AdminDashboard = () => {
@@ -20,6 +21,7 @@ const AdminDashboard = () => {
   const currentUsername = localStorage.getItem("username") || "Admin";
   // Default to true so desktop users see the sidebar by default
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activeView, setActiveView] = useState("overview");
 
   return (
     <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
@@ -52,10 +54,11 @@ const AdminDashboard = () => {
           <nav className="space-y-2">
             {sidebarLinks.map((link) => {
               const Icon = link.icon;
-              const isActive = location.pathname === link.to;
+              const isRouteMatch = location.pathname === link.to;
+              const isActive = link.view === "overview" ? isRouteMatch && activeView === "overview" : activeView === link.view;
               return (
                 <Link
-                  key={link.to}
+                  key={link.label}
                   to={link.to}
                   className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
                     isActive
@@ -63,6 +66,7 @@ const AdminDashboard = () => {
                       : "text-gray-700 hover:bg-gray-50 border border-transparent"
                   }`}
                   onClick={() => {
+                    setActiveView(link.view);
                     // Close sidebar only if we are on a smaller screen (matches lg breakpoint)
                     if (window.innerWidth < 1024) setIsSidebarOpen(false);
                   }}
@@ -103,22 +107,25 @@ const AdminDashboard = () => {
 
           {/* Main Content Area */}
           <div className="bg-white border border-gray-100 rounded-3xl shadow-lg shadow-gray-200/50 p-6 sm:p-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
-                <LayoutDashboard className="w-5 h-5" />
-              </div>
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                Welcome back, {currentUsername}
-              </h1>
-            </div>
-            <p className="text-gray-500 mt-2 max-w-2xl text-sm sm:text-base leading-relaxed">
-              Manage campus facilities, oversee reported issues, and maintain infrastructure seamlessly from your command center.
-            </p>
+            {activeView === "tickets" ? (
+              <RaisedTickets />
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                    <LayoutDashboard className="w-5 h-5" />
+                  </div>
+                  <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                    Welcome back, {currentUsername}
+                  </h1>
+                </div>
+                <p className="text-gray-500 mt-2 max-w-2xl text-sm sm:text-base leading-relaxed">
+                  Manage campus facilities, oversee raised tickets, and maintain infrastructure seamlessly from your command center.
+                </p>
 
-            {/* Quick stats could go here in future */}
-            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Placeholder for future content to make it look like a dashboard */}
-            </div>
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" />
+              </>
+            )}
           </div>
         </section>
       </div>
