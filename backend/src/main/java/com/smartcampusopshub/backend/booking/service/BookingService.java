@@ -72,8 +72,9 @@ public class BookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (!"PENDING".equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Only PENDING bookings can be approved");
+        if (!"PENDING".equals(booking.getStatus()) && 
+            !"WAITLIST".equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only PENDING or WAITLIST bookings can be approved");
         }
 
         booking.setStatus("APPROVED");
@@ -85,8 +86,9 @@ public class BookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (!"PENDING".equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Only PENDING bookings can be rejected");
+       if (!"PENDING".equals(booking.getStatus()) && 
+            !"WAITLIST".equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only PENDING or WAITLIST bookings can be rejected");
         }
 
         booking.setStatus("REJECTED");
