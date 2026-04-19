@@ -40,8 +40,12 @@ public class BookingService {
                     booking.getEndTime()
             );
 
-            throw new ConflictException("AUTO|" + nextSlot);
-        }
+            booking.setStatus("WAITLIST");
+            Booking saved = bookingRepository.save(booking);
+
+            throw new ConflictException("WAITLIST|" + nextSlot);
+                    }
+
 
         // ✅ SAVE IF NO CONFLICT
         return bookingRepository.save(booking);
@@ -122,5 +126,13 @@ public class BookingService {
         // After last booking
         Booking last = bookings.get(bookings.size() - 1);
         return last.getEndTime() + " to " + last.getEndTime().plusHours(1);
+    }
+
+    // GET WAITLIST
+    public List<Booking> getWaitlistBookings() {
+    return bookingRepository.findAll()
+            .stream()
+            .filter(b -> "WAITLIST".equals(b.getStatus()))
+            .toList();
     }
 }

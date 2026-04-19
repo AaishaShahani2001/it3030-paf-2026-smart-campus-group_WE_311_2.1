@@ -60,4 +60,10 @@ public class BookingController {
         Booking updated = bookingService.rejectBooking(id);
         return ResponseEntity.ok(updated);
     }
+
+    // WAITLIST
+    @GetMapping("/waitlist")
+    public List<Booking> getWaitlistBookings() {
+        return bookingService.getWaitlistBookings();
+    }
 }
