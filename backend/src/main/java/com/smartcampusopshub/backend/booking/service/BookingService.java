@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -19,9 +18,11 @@ public class BookingService {
 
     // CREATE BOOKING
     public Booking createBooking(Booking booking) {
+
+        // ✅ Default status
         if (booking.getStatus() == null) {
-        booking.setStatus("PENDING");
-         }
+            booking.setStatus("PENDING");
+        }
 
         List<Booking> conflicts = bookingRepository
                 .findByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
@@ -30,59 +31,23 @@ public class BookingService {
                         booking.getStartTime()
                 );
 
-        System.out.println("Conflicts found: " + conflicts.size());
-
+        // 🔥 IF CONFLICT → AUTO SLOT
         if (!conflicts.isEmpty()) {
 
-            List<Booking> bookings =
-                    bookingRepository.findByResourceIdOrderByStartTimeAsc(
-                            booking.getResourceId()
-                    );
+            String nextSlot = findNextAvailableSlot(
+                    booking.getResourceId(),
+                    booking.getStartTime(),
+                    booking.getEndTime()
+            );
 
-            List<String> suggestions = new ArrayList<>();
-
-            LocalDateTime requestedStart = booking.getStartTime();
-
-            // ✅ BEFORE FIRST BOOKING
-            if (!bookings.isEmpty()) {
-                Booking first = bookings.get(0);
-
-                if (requestedStart.isBefore(first.getStartTime())) {
-                    suggestions.add(
-                            requestedStart + " to " + requestedStart.plusHours(1)
-                    );
-                }
-            }
-
-            // ✅ BETWEEN BOOKINGS
-            for (int i = 0; i < bookings.size() - 1; i++) {
-
-                LocalDateTime endCurrent = bookings.get(i).getEndTime();
-                LocalDateTime startNext = bookings.get(i + 1).getStartTime();
-
-                if (endCurrent.isBefore(startNext)) {
-                    suggestions.add(endCurrent + " to " + startNext);
-                }
-            }
-
-            // ✅ AFTER LAST BOOKING
-            if (!bookings.isEmpty()) {
-                Booking last = bookings.get(bookings.size() - 1);
-
-                suggestions.add(
-                        last.getEndTime() + " to " + last.getEndTime().plusHours(1)
-                );
-            }
-
-            // 🔥 THROW
-            throw new ConflictException("CONFLICT|" + String.join(",", suggestions));
+            throw new ConflictException("AUTO|" + nextSlot);
         }
 
-        // ✅ NO CONFLICT → SAVE
+        // ✅ SAVE IF NO CONFLICT
         return bookingRepository.save(booking);
     }
 
-    // GET ALL BOOKINGS
+    // GET ALL
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();
     }
@@ -98,39 +63,64 @@ public class BookingService {
         bookingRepository.deleteById(id);
     }
 
-    // APPROVE BOOKING
+    // APPROVE
     public Booking approveBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-        
-        // ❌ VALIDATION
+
         if (!"PENDING".equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only PENDING bookings can be approved");
         }
-        
+
         booking.setStatus("APPROVED");
         return bookingRepository.save(booking);
     }
 
-    // REJECT BOOKING
+    // REJECT
     public Booking rejectBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        // ❌ VALIDATION
         if (!"PENDING".equals(booking.getStatus())) {
-                throw new IllegalArgumentException("Only PENDING bookings can be rejected");
-
+            throw new IllegalArgumentException("Only PENDING bookings can be rejected");
         }
 
         booking.setStatus("REJECTED");
         return bookingRepository.save(booking);
     }
 
+    // GET PENDING
     public List<Booking> getPendingBookings() {
-    return bookingRepository.findAll()
-            .stream()
-            .filter(b -> "PENDING".equals(b.getStatus()))
-            .toList();
+        return bookingRepository.findAll()
+                .stream()
+                .filter(b -> "PENDING".equals(b.getStatus()))
+                .toList();
+    }
+
+    // 🔥 AUTO SLOT LOGIC
+    public String findNextAvailableSlot(Long resourceId, LocalDateTime start, LocalDateTime end) {
+
+        List<Booking> bookings = bookingRepository
+                .findByResourceIdOrderByStartTimeAsc(resourceId);
+
+        // If no bookings → free
+        if (bookings.isEmpty()) {
+            return start + " to " + end;
+        }
+
+        // Check gaps
+        for (int i = 0; i < bookings.size() - 1; i++) {
+
+            LocalDateTime currentEnd = bookings.get(i).getEndTime();
+            LocalDateTime nextStart = bookings.get(i + 1).getStartTime();
+
+            if (currentEnd.isBefore(nextStart)) {
+                return currentEnd + " to " + nextStart;
+            }
+        }
+
+        // After last booking
+        Booking last = bookings.get(bookings.size() - 1);
+        return last.getEndTime() + " to " + last.getEndTime().plusHours(1);
     }
 }
