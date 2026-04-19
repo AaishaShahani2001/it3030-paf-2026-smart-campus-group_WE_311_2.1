@@ -3,7 +3,6 @@ package com.smartcampusopshub.backend.booking.service;
 import com.smartcampusopshub.backend.common.exception.ConflictException;
 import com.smartcampusopshub.backend.booking.entity.Booking;
 import com.smartcampusopshub.backend.booking.repository.BookingRepository;
-import com.smartcampusopshub.backend.common.exception.ConflictException;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +19,9 @@ public class BookingService {
 
     // CREATE BOOKING
     public Booking createBooking(Booking booking) {
+        if (booking.getStatus() == null) {
+        booking.setStatus("PENDING");
+         }
 
         List<Booking> conflicts = bookingRepository
                 .findByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
@@ -94,5 +96,41 @@ public class BookingService {
     // DELETE
     public void deleteBooking(Long id) {
         bookingRepository.deleteById(id);
+    }
+
+    // APPROVE BOOKING
+    public Booking approveBooking(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        
+        // ❌ VALIDATION
+        if (!"PENDING".equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only PENDING bookings can be approved");
+        }
+        
+        booking.setStatus("APPROVED");
+        return bookingRepository.save(booking);
+    }
+
+    // REJECT BOOKING
+    public Booking rejectBooking(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        // ❌ VALIDATION
+        if (!"PENDING".equals(booking.getStatus())) {
+                throw new IllegalArgumentException("Only PENDING bookings can be rejected");
+
+        }
+
+        booking.setStatus("REJECTED");
+        return bookingRepository.save(booking);
+    }
+
+    public List<Booking> getPendingBookings() {
+    return bookingRepository.findAll()
+            .stream()
+            .filter(b -> "PENDING".equals(b.getStatus()))
+            .toList();
     }
 }

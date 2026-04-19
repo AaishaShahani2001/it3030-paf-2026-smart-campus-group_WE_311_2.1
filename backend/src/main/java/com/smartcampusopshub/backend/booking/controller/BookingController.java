@@ -29,6 +29,12 @@ public class BookingController {
         return bookingService.getAllBookings();
     }
 
+    // ✅ IMPORTANT: PUT THIS BEFORE {id}
+    @GetMapping("/pending")
+    public List<Booking> getPendingBookings() {
+        return bookingService.getPendingBookings();
+    }
+
     // GET BY ID
     @GetMapping("/{id}")
     public Booking getBooking(@PathVariable Long id) {
@@ -39,5 +45,19 @@ public class BookingController {
     @DeleteMapping("/{id}")
     public void deleteBooking(@PathVariable Long id) {
         bookingService.deleteBooking(id);
+    }
+
+    // APPROVE
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<Booking> approveBooking(@PathVariable Long id) {
+        Booking updated = bookingService.approveBooking(id);
+        return ResponseEntity.ok(updated);
+    }
+
+    // REJECT
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<Booking> rejectBooking(@PathVariable Long id) {
+        Booking updated = bookingService.rejectBooking(id);
+        return ResponseEntity.ok(updated);
     }
 }
