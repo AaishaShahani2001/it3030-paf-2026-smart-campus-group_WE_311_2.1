@@ -26,7 +26,7 @@ const Navbar = () => {
 
   const navLinks = [
     { name: "Home", to: "/home" },
-    { name: "Facilities", to: "/admin/facilities" },
+    { name: "Resources", to: "/resources" },
     { name: "Bookings", to: "#" },
     { name: "Report An Issue", to: "/report-an-issue" },
   ];
