@@ -4,8 +4,6 @@ import com.smartcampusopshub.backend.booking.dto.BookingResponseDTO;
 import com.smartcampusopshub.backend.booking.dto.CreateBookingDTO;
 import com.smartcampusopshub.backend.booking.entity.Booking;
 import com.smartcampusopshub.backend.booking.service.BookingService;
-import com.smartcampusopshub.backend.booking.dto.CreateBookingDTO;
-import com.smartcampusopshub.backend.booking.dto.BookingResponseDTO;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
@@ -51,6 +49,12 @@ public class BookingController {
         bookingService.deleteBooking(id);
     }
 
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<Booking> cancelBooking(@PathVariable Long id) {
+        Booking updated = bookingService.cancelBooking(id);
+        return ResponseEntity.ok(updated);
+    }
+
     // APPROVE
     @PutMapping("/{id}/approve")
     public ResponseEntity<Booking> approveBooking(@PathVariable Long id) {
@@ -70,4 +74,12 @@ public class BookingController {
     public List<Booking> getWaitlistBookings() {
         return bookingService.getWaitlistBookings();
     }
+
+   // GET BY EMAIL (IMPORTANT)
+    @GetMapping("/user-by-email/{email}")
+    public List<Booking> getBookingsByEmail(@PathVariable String email) {
+        return bookingService.getBookingsByEmail(email);
+    }
+
+    
 }

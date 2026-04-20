@@ -1,6 +1,7 @@
 package com.smartcampusopshub.backend.booking.service;
 
-import com.smartcampusopshub.backend.common.exception.ConflictException;
+import com.smartcampusopshub.backend.auth.model.User;
+import com.smartcampusopshub.backend.auth.repository.UserRepository;
 import com.smartcampusopshub.backend.booking.dto.BookingResponseDTO;
 import com.smartcampusopshub.backend.booking.dto.CreateBookingDTO;
 import com.smartcampusopshub.backend.booking.entity.Booking;
@@ -17,34 +18,48 @@ import java.util.List;
 public class BookingService {
 
     private final BookingRepository bookingRepository;
+    private final UserRepository userRepository;
 
     // CREATE BOOKING
     public BookingResponseDTO createBooking(CreateBookingDTO dto) {
 
         Booking booking = new Booking();
-        booking.setUserId(dto.getUserId());
         booking.setResourceId(dto.getResourceId());
         booking.setStartTime(dto.getStartTime());
         booking.setEndTime(dto.getEndTime());
         booking.setPurpose(dto.getPurpose());
         booking.setAttendees(dto.getAttendees());
         booking.setStatus("PENDING");
+        User user = userRepository.findByEmail(dto.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // UUID → Long convert (temporary fix)
+        booking.setUserId(user.getId().toString());
+
+        
 
         List<Booking> conflicts = bookingRepository
-                .findByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
-                        booking.getResourceId(),
-                        booking.getEndTime(),
-                        booking.getStartTime()
-                );
+            .findConflictingBookings(
+                booking.getResourceId(),
+                booking.getEndTime(),
+                booking.getStartTime()
+            );
 
         if (!conflicts.isEmpty()) {
+
+            String suggestion = findNextAvailableSlot(
+                    booking.getResourceId(),
+                    booking.getStartTime(),
+                    booking.getEndTime()
+            );
+
             booking.setStatus("WAITLIST");
             Booking saved = bookingRepository.save(booking);
 
             return new BookingResponseDTO(
                     saved.getId(),
                     "WAITLIST",
-                    "Booking added to waitlist"
+                    "Slot unavailable. Try: " + suggestion
             );
         }
 
@@ -78,11 +93,6 @@ public class BookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (!"PENDING".equals(booking.getStatus()) && 
-            !"WAITLIST".equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Only PENDING or WAITLIST bookings can be approved");
-        }
-
         booking.setStatus("APPROVED");
         return bookingRepository.save(booking);
     }
@@ -91,11 +101,6 @@ public class BookingService {
     public Booking rejectBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-
-       if (!"PENDING".equals(booking.getStatus()) && 
-            !"WAITLIST".equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Only PENDING or WAITLIST bookings can be rejected");
-        }
 
         booking.setStatus("REJECTED");
         return bookingRepository.save(booking);
@@ -109,18 +114,16 @@ public class BookingService {
                 .toList();
     }
 
-    // 🔥 AUTO SLOT LOGIC
+    // AUTO SLOT LOGIC
     public String findNextAvailableSlot(Long resourceId, LocalDateTime start, LocalDateTime end) {
 
         List<Booking> bookings = bookingRepository
                 .findByResourceIdOrderByStartTimeAsc(resourceId);
 
-        // If no bookings → free
         if (bookings.isEmpty()) {
             return start + " to " + end;
         }
 
-        // Check gaps
         for (int i = 0; i < bookings.size() - 1; i++) {
 
             LocalDateTime currentEnd = bookings.get(i).getEndTime();
@@ -131,16 +134,34 @@ public class BookingService {
             }
         }
 
-        // After last booking
         Booking last = bookings.get(bookings.size() - 1);
         return last.getEndTime() + " to " + last.getEndTime().plusHours(1);
     }
 
     // GET WAITLIST
     public List<Booking> getWaitlistBookings() {
-    return bookingRepository.findAll()
-            .stream()
-            .filter(b -> "WAITLIST".equals(b.getStatus()))
-            .toList();
+        return bookingRepository.findAll()
+                .stream()
+                .filter(b -> "WAITLIST".equals(b.getStatus()))
+                .toList();
+    }
+
+    // ✅ GET BOOKINGS BY USER EMAIL (FINAL FIX)
+    public List<Booking> getBookingsByEmail(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return bookingRepository.findByUserId(
+                user.getId().toString()
+        );
+    }
+
+    public Booking cancelBooking(Long id) {
+        Booking booking = bookingRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        booking.setStatus("CANCELLED");
+        return bookingRepository.save(booking);
     }
 }

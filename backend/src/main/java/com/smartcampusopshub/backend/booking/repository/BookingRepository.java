@@ -2,29 +2,30 @@ package com.smartcampusopshub.backend.booking.repository;
 
 import com.smartcampusopshub.backend.booking.entity.Booking;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import java.time.LocalDateTime;
-
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    List<Booking> findByUserId(Long userId);
+    List<Booking> findByUserId(String userId); 
 
     List<Booking> findByResourceId(Long resourceId);
 
-    List<Booking> findByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
-        Long resourceId,
-        LocalDateTime endTime,
-        LocalDateTime startTime
-        );
-
-    List<Booking> findByResourceIdAndStartTimeBetweenOrderByStartTime(
-        Long resourceId,
-        LocalDateTime startOfDay,
-        LocalDateTime endOfDay
-        );
-
     List<Booking> findByResourceIdOrderByStartTimeAsc(Long resourceId);
+
+    @Query("""
+        SELECT b FROM Booking b
+        WHERE b.resourceId = :resourceId
+        AND b.status IN ('PENDING', 'APPROVED')
+        AND b.startTime < :endTime
+        AND b.endTime > :startTime
+        """)
+        List<Booking> findConflictingBookings(
+                @Param("resourceId") Long resourceId,
+                @Param("endTime") LocalDateTime endTime,
+                @Param("startTime") LocalDateTime startTime
+        );
 }
