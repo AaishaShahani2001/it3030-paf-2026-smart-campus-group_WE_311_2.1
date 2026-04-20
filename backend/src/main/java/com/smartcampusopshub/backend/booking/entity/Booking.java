@@ -10,7 +10,9 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
+    // ✅ FIXED TYPE
+    private String userId;
+
     private Long resourceId;
 
     private LocalDateTime startTime;
@@ -22,8 +24,11 @@ public class Booking {
 
     public Long getId() { return id; }
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
+    // ✅ FIXED
+    public String getUserId() { return userId; }
+
+    // ✅ FIXED
+    public void setUserId(String userId) { this.userId = userId; }
 
     public Long getResourceId() { return resourceId; }
     public void setResourceId(Long resourceId) { this.resourceId = resourceId; }

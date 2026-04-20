@@ -12,4 +12,5 @@ public class CreateBookingDTO {
     private LocalDateTime endTime;
     private String purpose;
     private int attendees;
+    private String email;
 }

@@ -12,6 +12,9 @@ import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import UserDashboard from "./pages/user/UserDashboard";
 import ReportAnIssue from "./pages/ReportAnIssue";
 import Resources from './pages/Resources';
+import BookingPage from "./pages/Booking/BookingPage";
+import MyBookings from "./pages/Booking/MyBookings";
+import MyBookingsCalendar from "./pages/Booking/MyBookingsCalendar";
 
 const AppLayout = ({ children }) => (
   <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -38,6 +41,13 @@ const App = () => {
 
         <Route path="/login" element={<AppLayout><Login /></AppLayout>} />
         <Route path="/register" element={<AppLayout><Register /></AppLayout>} />
+
+      // Booking routes
+      <Route path="/book/:id" element={<BookingPage />} />
+      <Route path="/bookings" element={<MyBookings />} />
+      <Route path="/bookings-calendar" element={<MyBookingsCalendar />} />
+
+
       </Routes>
     </>
   );
