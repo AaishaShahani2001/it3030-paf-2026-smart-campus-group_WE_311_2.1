@@ -1,6 +1,7 @@
 package com.smartcampusopshub.backend.booking.service;
 
-import com.smartcampusopshub.backend.common.exception.ConflictException;
+import com.smartcampusopshub.backend.auth.model.User;
+import com.smartcampusopshub.backend.auth.repository.UserRepository;
 import com.smartcampusopshub.backend.booking.dto.BookingResponseDTO;
 import com.smartcampusopshub.backend.booking.dto.CreateBookingDTO;
 import com.smartcampusopshub.backend.booking.entity.Booking;
@@ -17,12 +18,12 @@ import java.util.List;
 public class BookingService {
 
     private final BookingRepository bookingRepository;
+    private final UserRepository userRepository;
 
     // CREATE BOOKING
     public BookingResponseDTO createBooking(CreateBookingDTO dto) {
 
         Booking booking = new Booking();
-        booking.setUserId(dto.getUserId());
         booking.setResourceId(dto.getResourceId());
         booking.setStartTime(dto.getStartTime());
         booking.setEndTime(dto.getEndTime());
@@ -30,78 +31,104 @@ public class BookingService {
         booking.setAttendees(dto.getAttendees());
         booking.setStatus("PENDING");
 
+        User user = userRepository.findByEmail(dto.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        booking.setUserId(user.getId().toString());
+        booking.setUserName(dto.getUserName());
+        booking.setOccupation(dto.getOccupation());
+        
+
         List<Booking> conflicts = bookingRepository
-                .findByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
+                .findConflictingBookings(
                         booking.getResourceId(),
                         booking.getEndTime(),
                         booking.getStartTime()
                 );
 
         if (!conflicts.isEmpty()) {
+
+            String suggestion = findNextAvailableSlot(
+                    booking.getResourceId(),
+                    booking.getStartTime(),
+                    booking.getEndTime()
+            );
+
             booking.setStatus("WAITLIST");
             Booking saved = bookingRepository.save(booking);
 
-            return new BookingResponseDTO(
-                    saved.getId(),
-                    "WAITLIST",
-                    "Booking added to waitlist"
-            );
+            return buildDTO(saved, "Slot unavailable...");
         }
 
         Booking saved = bookingRepository.save(booking);
 
-        return new BookingResponseDTO(
-                saved.getId(),
-                "APPROVED",
-                "Booking created successfully"
+        return buildDTO(saved, "Booking created successfully");
+    }
+
+    // ✅ FIXED HERE (IMPORTANT)
+       private BookingResponseDTO buildDTO(Booking booking, String message) {
+            return new BookingResponseDTO(
+            booking.getId(),
+            booking.getStatus(),
+            message,
+            booking.getUserName(),   // ✅ FORM NAME ONLY
+            booking.getOccupation(),
+            booking.getResourceId(),
+            booking.getStartTime(),
+            booking.getEndTime(),
+            booking.getPurpose()
         );
-    }
-
+}
     // GET ALL
-    public List<Booking> getAllBookings() {
-        return bookingRepository.findAll();
+    public List<BookingResponseDTO> getAllBookings() {
+        return bookingRepository.findAll()
+                .stream()
+                .map(this::convertToDTO)
+                .toList();
     }
 
-    // GET BY ID
+    // CONVERT TO DTO
+    private BookingResponseDTO convertToDTO(Booking booking) {
+    return new BookingResponseDTO(
+            booking.getId(),
+            booking.getStatus(),
+            booking.getPurpose(),
+            booking.getUserName(),
+            booking.getOccupation(),
+            booking.getResourceId(),
+            booking.getStartTime(),
+            booking.getEndTime(),
+            booking.getPurpose()
+    );
+}
+
     public Booking getBookingById(Long id) {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
     }
 
-    // DELETE
     public void deleteBooking(Long id) {
         bookingRepository.deleteById(id);
     }
 
-    // APPROVE
     public Booking approveBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-
-        if (!"PENDING".equals(booking.getStatus()) && 
-            !"WAITLIST".equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Only PENDING or WAITLIST bookings can be approved");
-        }
 
         booking.setStatus("APPROVED");
         return bookingRepository.save(booking);
     }
 
-    // REJECT
-    public Booking rejectBooking(Long id) {
+    public Booking rejectBooking(Long id, String reason) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-       if (!"PENDING".equals(booking.getStatus()) && 
-            !"WAITLIST".equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Only PENDING or WAITLIST bookings can be rejected");
-        }
-
         booking.setStatus("REJECTED");
+        booking.setRejectReason(reason);
+
         return bookingRepository.save(booking);
     }
 
-    // GET PENDING
     public List<Booking> getPendingBookings() {
         return bookingRepository.findAll()
                 .stream()
@@ -109,18 +136,15 @@ public class BookingService {
                 .toList();
     }
 
-    // 🔥 AUTO SLOT LOGIC
     public String findNextAvailableSlot(Long resourceId, LocalDateTime start, LocalDateTime end) {
 
         List<Booking> bookings = bookingRepository
                 .findByResourceIdOrderByStartTimeAsc(resourceId);
 
-        // If no bookings → free
         if (bookings.isEmpty()) {
             return start + " to " + end;
         }
 
-        // Check gaps
         for (int i = 0; i < bookings.size() - 1; i++) {
 
             LocalDateTime currentEnd = bookings.get(i).getEndTime();
@@ -131,16 +155,53 @@ public class BookingService {
             }
         }
 
-        // After last booking
         Booking last = bookings.get(bookings.size() - 1);
         return last.getEndTime() + " to " + last.getEndTime().plusHours(1);
     }
 
-    // GET WAITLIST
     public List<Booking> getWaitlistBookings() {
-    return bookingRepository.findAll()
-            .stream()
-            .filter(b -> "WAITLIST".equals(b.getStatus()))
-            .toList();
+        return bookingRepository.findAll()
+                .stream()
+                .filter(b -> "WAITLIST".equals(b.getStatus()))
+                .toList();
+    }
+
+    public List<Booking> getBookingsByEmail(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return bookingRepository.findByUserId(
+                user.getId().toString()
+        );
+    }
+
+    public Booking cancelBooking(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        booking.setStatus("CANCELLED");
+        Booking saved = bookingRepository.save(booking);
+
+        promoteWaitlist(booking.getResourceId());
+
+        return saved;
+    }
+
+    public void promoteWaitlist(Long resourceId) {
+        List<Booking> waitlist = bookingRepository.findAll()
+                .stream()
+                .filter(b ->
+                        resourceId.equals(b.getResourceId()) &&
+                                "WAITLIST".equals(b.getStatus())
+                )
+                .sorted((a, b) -> a.getStartTime().compareTo(b.getStartTime()))
+                .toList();
+
+        if (!waitlist.isEmpty()) {
+            Booking next = waitlist.get(0);
+            next.setStatus("APPROVED");
+            bookingRepository.save(next);
+        }
     }
 }

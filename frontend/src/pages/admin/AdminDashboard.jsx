@@ -9,11 +9,14 @@ import {
   X,
 } from "lucide-react";
 import RaisedTickets from "../../components/admin/RaisedTickets";
+import AdminBookings from "../../components/admin/AdminBookings";
 
 const sidebarLinks = [
   { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard, view: "overview" },
   { label: "Manage Facilities", to: "/admin/facilities", icon: Wrench, view: "facilities" },
-  { label: "Raised Tickets", to: "/admin/dashboard", icon: Ticket, view: "tickets" },
+  { label: "Raised Tickets", to: "/admin/tickets", icon: Ticket, view: "tickets" },
+  { label: "Manage Bookings", to: "/admin/dashboard", icon: Ticket, view: "bookings" },
+
 ];
 
 const AdminDashboard = () => {
@@ -109,6 +112,8 @@ const AdminDashboard = () => {
           <div className="bg-white border border-gray-100 rounded-3xl shadow-lg shadow-gray-200/50 p-6 sm:p-8">
             {activeView === "tickets" ? (
               <RaisedTickets />
+            ) : activeView === "bookings" ? (
+              <AdminBookings />
             ) : (
               <>
                 <div className="flex items-center gap-3 mb-2">

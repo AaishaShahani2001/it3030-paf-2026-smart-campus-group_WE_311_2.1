@@ -9,11 +9,14 @@ import {
   X,
 } from "lucide-react";
 import AllTickets from "../../components/user/AllTickets";
+import MyBookings from "../../pages/Booking/MyBookings";
+import { CalendarDays } from "lucide-react";
 
 const sidebarLinks = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "tickets", label: "My tickets", icon: TicketIcon },
   { label: "Report an issue", to: "/report-an-issue", icon: AlertTriangle },
+  { id: "bookings", label: "My bookings", icon: CalendarDays },
 ];
 
 const UserDashboard = () => {
@@ -24,6 +27,7 @@ const UserDashboard = () => {
     const sectionParam = params.get("section");
     const hashSection = window.location.hash.replace("#", "");
     if (sectionParam === "tickets" || hashSection === "tickets") return "tickets";
+    if (sectionParam === "bookings" || hashSection === "bookings") return "bookings";
     return "overview";
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -34,6 +38,10 @@ const UserDashboard = () => {
     const hashSection = location.hash.replace("#", "");
     if (sectionParam === "tickets" || hashSection === "tickets") {
       setActiveSection("tickets");
+      return;
+    }
+    if (sectionParam === "bookings" || hashSection === "bookings") {
+      setActiveSection("bookings");
       return;
     }
     if (sectionParam === "overview" || hashSection === "overview") {
@@ -206,6 +214,9 @@ const UserDashboard = () => {
               </div>
             )}
           </div>
+          {activeSection === "bookings" && (
+              <MyBookings hideLayout={true} />
+            )}
         </section>
       </div>
     </main>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, LayoutDashboard, UserCircle2 } from "lucide-react";
 import { getToken, logout } from "../utils/auth";
 
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ const Navbar = () => {
   const navLinks = [
     { name: "Home", to: "/home" },
     { name: "Resources", to: "/resources" },
-    { name: "Bookings", to: "#" },
+    { name: "Bookings", to: "/bookings" },
     { name: "Report An Issue", to: "/report-an-issue" },
   ];
 
