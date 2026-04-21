@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, LayoutDashboard, UserCircle2 } from "lucide-react";
 import { getToken, logout } from "../utils/auth";
 
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
@@ -26,23 +27,23 @@ const Navbar = () => {
 
   const navLinks = [
     { name: "Home", to: "/home" },
-    { name: "Facilities", to: "/admin/facilities" },
-    { name: "Bookings", to: "#" },
+    { name: "Resources", to: "/resources" },
+    { name: "Bookings", to: "/bookings" },
     { name: "Report An Issue", to: "/report-an-issue" },
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-sm transition-all duration-300">
+    <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-white/40 shadow-sm transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo Section */}
           <Link to="/home" className="flex items-center gap-3 cursor-pointer group">
-            <div className="bg-linear-to-br from-emerald-500 to-teal-600 p-2.5 rounded-xl shadow-[0_4px_15px_rgba(16,185,129,0.4)] group-hover:shadow-[0_4px_25px_rgba(16,185,129,0.6)] transition-all duration-300 group-hover:-translate-y-0.5">
+            <div className="bg-linear-to-br from-green-800 to-green-700 p-2.5 rounded-xl shadow-[0_4px_15px_rgba(21,128,61,0.4)] group-hover:shadow-[0_4px_25px_rgba(21,128,61,0.6)] transition-all duration-300 group-hover:-translate-y-0.5">
               <LayoutDashboard className="h-6 w-6 text-white" />
             </div>
             <span className="font-extrabold text-2xl text-slate-900 tracking-tight">
               Smart Campus{" "}
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-600 to-teal-500">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-green-800 to-green-600">
                 Ops Hub
               </span>
             </span>
@@ -55,7 +56,7 @@ const Navbar = () => {
                 <a
                   key={link.name}
                   href={link.to}
-                  className="text-slate-600 hover:text-emerald-600 font-semibold text-sm transition-colors duration-200"
+                  className="text-slate-600 hover:text-green-800 font-semibold text-sm transition-colors duration-200"
                 >
                   {link.name}
                 </a>
@@ -63,7 +64,7 @@ const Navbar = () => {
                 <Link
                   key={link.name}
                   to={link.to}
-                  className="text-slate-600 hover:text-emerald-600 font-semibold text-sm transition-colors duration-200"
+                  className="text-slate-600 hover:text-green-800 font-semibold text-sm transition-colors duration-200"
                 >
                   {link.name}
                 </Link>
@@ -76,14 +77,14 @@ const Navbar = () => {
               <>
                 <Link
                   to="/login"
-                  className="px-6 py-2.5 text-sm font-semibold text-white bg-linear-to-r from-emerald-600 to-teal-500 rounded-full shadow-[0_4px_12px_rgba(16,185,129,0.3)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.5)] hover:-translate-y-0.5 transition-all duration-300"
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-linear-to-r from-green-800 to-green-700 rounded-full shadow-[0_4px_12px_rgba(21,128,61,0.3)] hover:shadow-[0_6px_20px_rgba(21,128,61,0.5)] hover:-translate-y-0.5 transition-all duration-300"
                 >
                   Login
                 </Link>
 
                 <Link
                   to="/register"
-                  className="px-6 py-2.5 text-sm font-semibold text-emerald-600 border border-emerald-500 rounded-full hover:bg-emerald-50 transition-all duration-300"
+                  className="px-6 py-2.5 text-sm font-semibold text-green-800 border border-green-700 rounded-full hover:bg-green-100 transition-all duration-300"
                 >
                   Register
                 </Link>
@@ -92,7 +93,7 @@ const Navbar = () => {
               <div className="flex items-center gap-3">
                 <Link
                   to={dashboardRoute}
-                  className="flex items-center gap-2 px-3 py-2 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-full border border-green-700/25 bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
                   title="Go to dashboard"
                 >
                   <UserCircle2 className="h-5 w-5" />
@@ -112,7 +113,7 @@ const Navbar = () => {
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-slate-600 hover:text-emerald-600 focus:outline-none transition-colors"
+              className="text-slate-600 hover:text-green-800 focus:outline-none transition-colors"
             >
               {isOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
             </button>
@@ -129,7 +130,7 @@ const Navbar = () => {
                 <a
                   key={link.name}
                   href={link.to}
-                  className="block px-4 py-3 text-base font-semibold text-slate-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                  className="block px-4 py-3 text-base font-semibold text-slate-700 hover:text-green-800 hover:bg-green-100 rounded-xl transition-all"
                   onClick={() => setIsOpen(false)}
                 >
                   {link.name}
@@ -138,7 +139,7 @@ const Navbar = () => {
                 <Link
                   key={link.name}
                   to={link.to}
-                  className="block px-4 py-3 text-base font-semibold text-slate-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                  className="block px-4 py-3 text-base font-semibold text-slate-700 hover:text-green-800 hover:bg-green-100 rounded-xl transition-all"
                   onClick={() => setIsOpen(false)}
                 >
                   {link.name}
@@ -152,7 +153,7 @@ const Navbar = () => {
                   <Link
                     to="/login"
                     onClick={() => setIsOpen(false)}
-                    className="block w-full text-center px-4 py-3.5 text-base font-bold text-white bg-linear-to-r from-emerald-600 to-teal-500 rounded-xl shadow-lg hover:shadow-emerald-500/30 transition-all"
+                    className="block w-full text-center px-4 py-3.5 text-base font-bold text-white bg-linear-to-r from-green-800 to-green-700 rounded-xl shadow-lg hover:shadow-green-800/30 transition-all"
                   >
                     Login
                   </Link>
@@ -160,7 +161,7 @@ const Navbar = () => {
                   <Link
                     to="/register"
                     onClick={() => setIsOpen(false)}
-                    className="block w-full text-center px-4 py-3.5 text-base font-bold text-emerald-600 border border-emerald-500 rounded-xl hover:bg-emerald-50 transition-all"
+                    className="block w-full text-center px-4 py-3.5 text-base font-bold text-green-800 border border-green-700 rounded-xl hover:bg-green-100 transition-all"
                   >
                     Register
                   </Link>
@@ -170,7 +171,7 @@ const Navbar = () => {
                   <Link
                     to={dashboardRoute}
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center justify-center gap-2 w-full text-center px-4 py-3 text-base font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-all"
+                    className="flex items-center justify-center gap-2 w-full text-center px-4 py-3 text-base font-semibold text-green-800 border border-green-700/25 bg-green-100 rounded-xl hover:bg-green-200 transition-all"
                   >
                     <UserCircle2 className="h-5 w-5" />
                     <span className="truncate">{currentUsername}</span>
