@@ -4,7 +4,7 @@ import Footer from "../../components/Footer";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
-export default function MyBookings() {
+export default function MyBookings({ hideLayout }) {
   const [bookings, setBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
@@ -119,7 +119,7 @@ export default function MyBookings() {
 
   return (
     <>
-      <Navbar />
+      {!hideLayout && <Navbar />}
 
       <div className="bg-gray-100 min-h-screen py-10 px-4">
         <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg p-8">
@@ -216,7 +216,7 @@ export default function MyBookings() {
         </div>
       </div>
 
-      <Footer />
+      {!hideLayout && <Footer />}
     </>
   );
 }
