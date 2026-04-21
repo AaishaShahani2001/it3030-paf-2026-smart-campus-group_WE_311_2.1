@@ -2,9 +2,6 @@ import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-
 const BookingPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -71,134 +68,120 @@ const BookingPage = () => {
   };
 
   return (
-    <>
-      <Navbar />
+    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full bg-transparent">
+      <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-6 sm:px-10 sm:py-8 border-b border-gray-200 bg-linear-to-r from-green-50 to-gray-50">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-green-800">Reservation Portal</p>
+          <h1 className="mt-2 text-3xl font-extrabold text-gray-900 tracking-tight">Book Resource</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Fill in your booking details to request access to this resource.
+          </p>
+        </div>
 
-      <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
-        
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100">
-          <div className="px-6 py-8 sm:p-10">
+        <div className="px-6 py-8 sm:px-10 sm:py-10">
+          {message && (
+            <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-200 text-green-900">
+              {message}
+            </div>
+          )}
 
-            <h1 className="text-3xl font-extrabold text-gray-900">
-              Book Resource
-            </h1>
-
-            {message && (
-              <div className="mt-6 p-4 rounded-xl bg-green-50 text-green-800">
-                {message}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-
-                {/* NAME */}
-                <div>
-                  <label>Name</label>
-                  <input
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    className="w-full p-3 border rounded-xl"
-                  />
-                </div>
-
-                {/* EMAIL */}
-                <div>
-                  <label>Email</label>
-                  <input
-                    name="email"
-                    value={form.email}
-                    readOnly
-                    className="w-full p-3 border rounded-xl bg-gray-100"
-                  />
-                </div>
-
-                {/* PHONE */}
-                <div>
-                  <label>Phone</label>
-                  <input
-                    name="phone"
-                    value={form.phone}
-                    onChange={handleChange}
-                    className="w-full p-3 border rounded-xl"
-                  />
-                </div>
-
-                {/* OCCUPATION */}
-                <div>
-                  <label>Occupation</label>
-                  <select
-                    name="occupation"
-                    value={form.occupation}
-                    onChange={handleChange}
-                    className="w-full p-3 border rounded-xl"
-                  >
-                    <option value="UNDERGRAD">Undergraduate</option>
-                    <option value="POSTGRAD">Postgraduate</option>
-                    <option value="LECTURER">Lecturer</option>
-                    <option value="STAFF">Staff</option>
-                  </select>
-                </div>
-
-                {/* START */}
-                <div>
-                  <label>Start Time</label>
-                  <input
-                    type="datetime-local"
-                    name="startTime"
-                    value={form.startTime}
-                    onChange={handleChange}
-                    className="w-full p-3 border rounded-xl"
-                  />
-                </div>
-
-                {/* END */}
-                <div>
-                  <label>End Time</label>
-                  <input
-                    type="datetime-local"
-                    name="endTime"
-                    value={form.endTime}
-                    onChange={handleChange}
-                    className="w-full p-3 border rounded-xl"
-                  />
-                </div>
-
-              </div>
-
-              {/* PURPOSE */}
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Purpose
-                </label>
-
-                <textarea
-                  rows={4}
-                  name="purpose"
-                  required
-                  value={form.purpose}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                <input
+                  name="name"
+                  value={form.name}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all resize-y"
-                  placeholder="Explain why you need this resource..."
+                  className="w-full p-3 border border-gray-300 rounded-xl bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-green-700/25 focus:border-green-700 outline-none transition"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                <input
+                  name="email"
+                  value={form.email}
+                  readOnly
+                  className="w-full p-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
+                <input
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-xl bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-green-700/25 focus:border-green-700 outline-none transition"
+                  placeholder="Optional contact number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Occupation</label>
+                <select
+                  name="occupation"
+                  value={form.occupation}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-xl bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-green-700/25 focus:border-green-700 outline-none transition"
+                >
+                  <option value="UNDERGRAD">Undergraduate</option>
+                  <option value="POSTGRAD">Postgraduate</option>
+                  <option value="LECTURER">Lecturer</option>
+                  <option value="STAFF">Staff</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Start Time</label>
+                <input
+                  type="datetime-local"
+                  name="startTime"
+                  value={form.startTime}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-xl bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-green-700/25 focus:border-green-700 outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">End Time</label>
+                <input
+                  type="datetime-local"
+                  name="endTime"
+                  value={form.endTime}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-xl bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-green-700/25 focus:border-green-700 outline-none transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Purpose</label>
+              <textarea
+                rows={4}
+                name="purpose"
+                required
+                value={form.purpose}
+                onChange={handleChange}
+                className="block w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-green-700/25 focus:border-green-700 sm:text-sm transition resize-y outline-none"
+                placeholder="Explain why you need this resource..."
+              />
+            </div>
+
+            <div className="pt-2 flex items-center justify-end">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-green-600 text-white px-6 py-3 rounded-xl"
+                className="bg-green-800 hover:bg-green-900 text-white px-8 py-3 rounded-xl font-semibold transition disabled:opacity-60"
               >
                 {isSubmitting ? "Submitting..." : "Confirm Booking"}
               </button>
-
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
-      </main>
-
-      <Footer />
-    </>
+      </div>
+    </main>
   );
 };
 
