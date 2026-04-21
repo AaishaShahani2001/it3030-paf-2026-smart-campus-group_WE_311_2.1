@@ -11,7 +11,7 @@ export default function BookingCalendar() {
       .then((res) => res.json())
       .then((data) => {
 
-        // ✅ NORMALIZE STATUS (VERY IMPORTANT FIX)
+        //  NORMALIZE STATUS (VERY IMPORTANT FIX)
         const normalized = data.map((b) => ({
           ...b,
           status: b.status?.toUpperCase().trim(),
@@ -19,7 +19,7 @@ export default function BookingCalendar() {
 
         setBookings(normalized);
 
-        // ✅ ONLY APPROVED BOOKINGS FOR CALENDAR
+        // ✅ONLY APPROVED BOOKINGS FOR CALENDAR
         const approved = normalized.filter(
           (b) => b.status === "APPROVED"
         );
@@ -28,32 +28,42 @@ export default function BookingCalendar() {
       });
   }, []);
 
-  // ✅ APPROVED BOOKINGS FOR SELECTED DATE
+  // APPROVED BOOKINGS FOR SELECTED DATE
   const selectedApprovedBookings = approvedBookings.filter(
     (b) =>
       new Date(b.startTime).toDateString() ===
       selectedDate.toDateString()
   );
 
-  // ✅ DATES WITH APPROVED BOOKINGS
-  const approvedDates = approvedBookings.map((b) =>
-    new Date(b.startTime).toDateString()
+  const now = new Date();
+
+  //  DATES WITH APPROVED BOOKINGS (past/upcoming separated)
+  const approvedPastDates = approvedBookings
+    .filter((b) => new Date(b.endTime) < now)
+    .map((b) => new Date(b.startTime).toDateString());
+  const approvedUpcomingDates = approvedBookings
+    .filter((b) => new Date(b.endTime) >= now)
+    .map((b) => new Date(b.startTime).toDateString());
+
+  //  UPCOMING APPROVED BOOKINGS ONLY
+  const upcomingBookings = approvedBookings.filter(
+    (b) => new Date(b.startTime) > now
   );
 
-  // ✅ UPCOMING BOOKINGS (ALL STATUS)
-  const upcomingBookings = bookings.filter(
-    (b) => new Date(b.startTime) > new Date()
-  );
+  const statusBadge = (status) =>
+    status === "APPROVED"
+      ? "bg-green-100 text-green-800 border border-green-200"
+      : "bg-gray-100 text-gray-700 border border-gray-200";
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 bg-transparent">
 
       {/* ================= CALENDAR ================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
         {/* CALENDAR */}
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h2 className="text-xl font-bold mb-4">
+        <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
             {selectedDate.toDateString()}
           </h2>
 
@@ -64,27 +74,34 @@ export default function BookingCalendar() {
               const isSelected =
                 day.toDateString() === selectedDate.toDateString();
 
-              const hasBooking = approvedDates.includes(
-                day.toDateString()
-              );
+              const dayString = day.toDateString();
+              const hasPastApproved = approvedPastDates.includes(dayString);
+              const hasUpcomingApproved = approvedUpcomingDates.includes(dayString);
 
               return (
                 <div
                   key={i}
                   onClick={() => setSelectedDate(day)}
-                  className={`p-3 text-center rounded cursor-pointer transition
+                  className={`p-3 text-center rounded-lg cursor-pointer transition font-medium
                     ${
                       isSelected
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 hover:bg-gray-200"
+                        ? "bg-green-800 text-white shadow"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                     }
                   `}
                 >
                   {i + 1}
 
-                  {/* ✅ ONLY APPROVED DOT */}
-                  {hasBooking && (
-                    <div className="w-2 h-2 bg-blue-500 mx-auto mt-1 rounded-full"></div>
+                  {/* ✅ ONLY APPROVED dots (past + upcoming) */}
+                  {(hasPastApproved || hasUpcomingApproved) && (
+                    <div className="flex justify-center mt-1 gap-1">
+                      {hasPastApproved && (
+                        <div className="w-2 h-2 bg-gray-500 mx-auto rounded-full"></div>
+                      )}
+                      {hasUpcomingApproved && (
+                        <div className="w-2 h-2 bg-green-700 mx-auto rounded-full"></div>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -93,8 +110,8 @@ export default function BookingCalendar() {
         </div>
 
         {/* APPROVED BOOKINGS DETAILS */}
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h2 className="text-xl font-bold mb-4">
+        <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
             Bookings on {selectedDate.toDateString()}
           </h2>
 
@@ -108,28 +125,26 @@ export default function BookingCalendar() {
                 new Date(b.endTime) < new Date();
 
               return (
-                <div
-                  key={b.id}
-                  className="p-4 mb-4 rounded-xl border bg-blue-50"
-                >
-                  <h3 className="font-semibold">
+                <div key={b.id} className="p-4 mb-4 rounded-xl border border-green-200 bg-green-50">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-gray-900">
                     Resource #{b.resourceId}
-                  </h3>
+                    </h3>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusBadge(b.status)}`}>
+                      {b.status}
+                    </span>
+                  </div>
 
-                  <p>
+                  <p className="text-sm text-gray-700 mt-1">
                     {new Date(b.startTime).toLocaleTimeString()} -{" "}
                     {new Date(b.endTime).toLocaleTimeString()}
-                  </p>
-
-                  <p className="text-green-600 font-semibold text-sm">
-                    APPROVED
                   </p>
 
                   <p
                     className={`text-xs mt-1 ${
                       isPast
                         ? "text-gray-400"
-                        : "text-green-500"
+                        : "text-green-700"
                     }`}
                   >
                     {isPast
@@ -145,8 +160,8 @@ export default function BookingCalendar() {
 
       {/* ================= UPCOMING BOOKINGS ================= */}
       <div>
-        <h2 className="text-xl font-bold mb-4">
-          Upcoming Bookings
+        <h2 className="text-xl font-bold text-gray-800 mb-4">
+          Upcoming Approved Bookings
         </h2>
 
         {upcomingBookings.length === 0 ? (
@@ -157,10 +172,10 @@ export default function BookingCalendar() {
           upcomingBookings.map((b) => (
             <div
               key={b.id}
-              className="p-4 mb-4 border rounded-xl bg-white shadow-sm flex justify-between items-center"
+              className="p-4 mb-4 border border-gray-200 rounded-xl bg-white shadow-sm flex justify-between items-center"
             >
               <div>
-                <h3 className="font-semibold">
+                <h3 className="font-semibold text-gray-900">
                   Resource #{b.resourceId}
                 </h3>
 
@@ -172,17 +187,7 @@ export default function BookingCalendar() {
 
               {/* STATUS BADGE */}
               <span
-                className={`text-xs font-semibold px-3 py-1 rounded-full
-                  ${
-                    b.status === "APPROVED"
-                      ? "bg-green-100 text-green-600"
-                      : b.status === "PENDING"
-                      ? "bg-yellow-100 text-yellow-600"
-                      : b.status === "REJECTED"
-                      ? "bg-red-100 text-red-600"
-                      : "bg-gray-100 text-gray-500"
-                  }
-                `}
+                className={`text-xs font-semibold px-3 py-1 rounded-full ${statusBadge(b.status)}`}
               >
                 {b.status}
               </span>

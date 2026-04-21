@@ -55,6 +55,7 @@ const getReporterEmailFromAuthState = () => {
 };
 
 const ReportAnIssue = () => {
+  const MAX_ATTACHMENTS = 3;
   const navigate = useNavigate();
 
   const [ticketMessage, setTicketMessage] = useState("");
@@ -81,11 +82,22 @@ const ReportAnIssue = () => {
 
   const handleTicketFieldChange = (event) => {
     const { name, value } = event.target;
+    if (name === "contactPhone") {
+      const numericPhone = value.replace(/\D/g, "").slice(0, 10);
+      setTicketForm((prev) => ({ ...prev, contactPhone: numericPhone }));
+      return;
+    }
     setTicketForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAttachmentChange = (event) => {
-    setAttachments(Array.from(event.target.files || []));
+    const selectedFiles = Array.from(event.target.files || []);
+    if (selectedFiles.length > MAX_ATTACHMENTS) {
+      toast.error(`You can upload a maximum of ${MAX_ATTACHMENTS} files.`);
+      setAttachments(selectedFiles.slice(0, MAX_ATTACHMENTS));
+      return;
+    }
+    setAttachments(selectedFiles);
   };
 
   const handleTicketSubmit = async (event) => {
@@ -96,6 +108,12 @@ const ReportAnIssue = () => {
     try {
       if (!ticketForm.reporterEmail) {
         throw new Error("Could not detect logged-in user email. Please login again.");
+      }
+      if (ticketForm.contactPhone && !/^\d{10}$/.test(ticketForm.contactPhone)) {
+        throw new Error("Phone number must be numeric and exactly 10 digits.");
+      }
+      if (attachments.length > MAX_ATTACHMENTS) {
+        throw new Error(`You can upload a maximum of ${MAX_ATTACHMENTS} files.`);
       }
 
       const formData = new FormData();
@@ -162,7 +180,7 @@ const ReportAnIssue = () => {
 
   return (
       <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full animate-fade-in-up">
-        <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100">
+        <div className="bg-white rounded-3xl shadow-xl shadow-gray-300/50 overflow-hidden border border-gray-200">
           <div className="px-6 py-8 sm:p-10">
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Report an Issue</h1>
             <p className="mt-2 text-lg text-gray-500">
@@ -182,12 +200,12 @@ const ReportAnIssue = () => {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Title</label>
-                  <input type="text" name="title" required maxLength={255} value={ticketForm.title} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all" placeholder="Short summary (e.g. projector in Lab 3)" />
+                  <input type="text" name="title" required maxLength={255} value={ticketForm.title} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 bg-white text-slate-900 rounded-xl shadow-sm focus:ring-green-700 focus:border-green-700 sm:text-sm transition-all" placeholder="Short summary (e.g. projector in Lab 3)" />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
-                  <select name="category" value={ticketForm.category} onChange={handleTicketFieldChange} className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white transition-all">
+                  <select name="category" value={ticketForm.category} onChange={handleTicketFieldChange} className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-green-700 focus:border-green-700 sm:text-sm bg-white text-slate-900 transition-all">
                     <option value="ELECTRICAL">Electrical</option>
                     <option value="PLUMBING">Plumbing</option>
                     <option value="IT_EQUIPMENT">IT Equipment</option>
@@ -201,7 +219,7 @@ const ReportAnIssue = () => {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Priority</label>
-                  <select name="priority" value={ticketForm.priority} onChange={handleTicketFieldChange} className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white transition-all">
+                  <select name="priority" value={ticketForm.priority} onChange={handleTicketFieldChange} className="block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-green-700 focus:border-green-700 sm:text-sm bg-white text-slate-900 transition-all">
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
                     <option value="HIGH">High</option>
@@ -211,17 +229,17 @@ const ReportAnIssue = () => {
 
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Location on campus</label>
-                  <input type="text" name="location" required maxLength={255} value={ticketForm.location} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all" placeholder="Building, floor, room or area" />
+                  <input type="text" name="location" required maxLength={255} value={ticketForm.location} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 bg-white text-slate-900 rounded-xl shadow-sm focus:ring-green-700 focus:border-green-700 sm:text-sm transition-all" placeholder="Building, floor, room or area" />
                 </div>
 
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                  <textarea rows={4} name="description" required value={ticketForm.description} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all resize-y" placeholder="What happened, when, and any safety or access notes"></textarea>
+                  <textarea rows={4} name="description" required value={ticketForm.description} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-green-700 focus:border-green-700 sm:text-sm transition-all resize-y" placeholder="What happened, when, and any safety or access notes"></textarea>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Phone (optional)</label>
-                  <input type="text" name="contactPhone" maxLength={50} value={ticketForm.contactPhone} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all" placeholder="For follow-up if needed" />
+                  <input type="text" name="contactPhone" inputMode="numeric" maxLength={10} pattern="\d{10}" value={ticketForm.contactPhone} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-green-700 focus:border-green-700 sm:text-sm transition-all" placeholder="10-digit phone number" />
                 </div>
 
                 <div>
@@ -231,38 +249,38 @@ const ReportAnIssue = () => {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Alternate email (optional)</label>
-                  <input type="email" name="contactEmail" value={ticketForm.contactEmail} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all" placeholder="Optional contact email" />
+                  <input type="email" name="contactEmail" value={ticketForm.contactEmail} onChange={handleTicketFieldChange} className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-green-700 focus:border-green-700 sm:text-sm transition-all" placeholder="Optional contact email" />
                 </div>
 
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Files & Photos (optional)</label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-emerald-500 transition-colors bg-gray-50">
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-green-700 transition-colors bg-gray-100">
                     <div className="space-y-1 text-center">
                       <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <div className="flex text-sm text-gray-600 justify-center">
-                        <label className="relative cursor-pointer bg-transparent rounded-md font-medium text-emerald-600 hover:text-emerald-700 focus-within:outline-none">
+                        <label className="relative cursor-pointer bg-transparent rounded-md font-medium text-green-800 hover:text-green-900 focus-within:outline-none">
                           <span>Upload files</span>
                           <input type="file" multiple onChange={handleAttachmentChange} className="sr-only" />
                         </label>
                         <p className="pl-1">or drag and drop</p>
                       </div>
                       <p className="text-xs text-gray-500">
-                        {attachments.length > 0 ? `${attachments.length} file(s) selected` : 'PNG, JPG, PDF up to 10MB'}
+                        {attachments.length > 0 ? `${attachments.length} file(s) selected` : `PNG, JPG, PDF up to 10MB (max ${MAX_ATTACHMENTS} files)`}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="sm:col-span-2 pt-4 flex items-center justify-end border-t border-gray-100">
-                  <button type="button" onClick={() => navigate(-1)} className="bg-white py-3 px-6 border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500/40 mr-4 transition-all duration-300">
+                  <button type="button" onClick={() => navigate(-1)} className="bg-white py-3 px-6 border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-700/40 mr-4 transition-all duration-300">
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingTicket}
-                    className="py-3 px-8 text-sm font-bold text-white bg-linear-to-r from-emerald-600 to-teal-500 rounded-xl shadow-[0_4px_14px_rgba(16,185,129,0.35)] hover:shadow-[0_6px_22px_rgba(16,185,129,0.45)] hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-300 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_14px_rgba(16,185,129,0.35)] disabled:cursor-not-allowed"
+                    className="py-3 px-8 text-sm font-bold text-white bg-linear-to-r from-green-800 to-green-700 rounded-xl shadow-[0_4px_14px_rgba(21,128,61,0.35)] hover:shadow-[0_6px_22px_rgba(21,128,61,0.45)] hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-700 transition-all duration-300 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_14px_rgba(21,128,61,0.35)] disabled:cursor-not-allowed"
                   >
                     {isSubmittingTicket ? "Submitting..." : "Submit Ticket"}
                   </button>

@@ -17,9 +17,9 @@ import MyBookings from "./pages/Booking/MyBookings";
 import MyBookingsCalendar from "./pages/Booking/MyBookingsCalendar";
 
 const AppLayout = ({ children }) => (
-  <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+  <div className="min-h-screen bg-gray-100 text-slate-900 flex flex-col font-sans">
     <Navbar />
-    <div className="grow">{children}</div>
+    <div className="grow bg-gray-100">{children}</div>
     <Footer />
   </div>
 );
@@ -43,9 +43,9 @@ const App = () => {
         <Route path="/register" element={<AppLayout><Register /></AppLayout>} />
 
       // Booking routes
-      <Route path="/book/:id" element={<BookingPage />} />
-      <Route path="/bookings" element={<MyBookings />} />
-      <Route path="/bookings-calendar" element={<MyBookingsCalendar />} />
+      <Route path="/book/:id" element={<AppLayout><BookingPage /></AppLayout>} />
+      <Route path="/bookings" element={<AppLayout><MyBookings hideLayout={true} /></AppLayout>} />
+      <Route path="/bookings-calendar" element={<AppLayout><MyBookingsCalendar /></AppLayout>} />
 
 
       </Routes>

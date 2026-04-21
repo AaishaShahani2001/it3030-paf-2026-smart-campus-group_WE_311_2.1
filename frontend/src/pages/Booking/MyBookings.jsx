@@ -30,6 +30,7 @@ export default function MyBookings({ hideLayout }) {
   }, []);
 
   const now = new Date();
+  const approvedBookings = bookings.filter((b) => b.status === "APPROVED");
 
   // ✅ SORTED BOOKINGS (clean UI)
   const upcoming = bookings
@@ -44,7 +45,7 @@ export default function MyBookings({ hideLayout }) {
 
   // ✅ GET BOOKINGS FOR SELECTED DATE
   const getBookingsForDate = (date) => {
-    return bookings.filter((b) => {
+    return approvedBookings.filter((b) => {
       return new Date(b.startTime).toDateString() === date.toDateString();
     });
   };
@@ -74,19 +75,19 @@ export default function MyBookings({ hideLayout }) {
 
   // ✅ STATUS COLOR
   const statusColor = (status) => {
-    if (status === "APPROVED") return "bg-green-100 text-green-700";
-    if (status === "WAITLIST") return "bg-yellow-100 text-yellow-700";
-    if (status === "REJECTED") return "bg-red-100 text-red-700";
-    if (status === "CANCELLED") return "bg-gray-200 text-gray-600"; // 🔥 NEW
-    return "bg-gray-100 text-gray-700";
+    if (status === "APPROVED") return "bg-green-100 text-green-800 border border-green-200";
+    if (status === "WAITLIST") return "bg-amber-100 text-amber-800 border border-amber-200";
+    if (status === "REJECTED") return "bg-red-100 text-red-800 border border-red-200";
+    if (status === "CANCELLED") return "bg-gray-200 text-gray-700 border border-gray-300";
+    return "bg-gray-100 text-gray-700 border border-gray-200";
   };
 
   // ✅ BOOKING CARD
   const BookingCard = ({ b }) => (
-    <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border">
+    <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-gray-200">
       <div className="flex justify-between items-center">
         <div>
-          <p className="font-semibold text-gray-800">
+          <p className="font-semibold text-gray-900">
             Resource #{b.resourceId}
           </p>
           <p className="text-sm text-gray-500">
@@ -109,7 +110,7 @@ export default function MyBookings({ hideLayout }) {
         !isPast(b.endTime) && (
           <button
             onClick={() => handleCancel(b.id)}
-            className="mt-3 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition"
+            className="mt-3 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg font-semibold transition"
           >
             Cancel
           </button>
@@ -121,17 +122,21 @@ export default function MyBookings({ hideLayout }) {
     <>
       {!hideLayout && <Navbar />}
 
-      <div className="bg-gray-100 min-h-screen py-10 px-4">
-        <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg p-8">
+      <div className="bg-transparent min-h-screen py-10 px-4">
+        <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-lg border border-gray-200 p-8">
 
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          <div className="mb-6">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-green-800">Bookings</p>
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
             My Bookings
-          </h2>
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">Track approved reservations and upcoming requests in one place.</p>
+          </div>
 
           {/* 🔥 CALENDAR */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
 
-            <div className="bg-white p-4 rounded-xl shadow">
+            <div className="bg-gray-50 p-4 rounded-xl shadow-sm border border-gray-200">
               <Calendar
                 onChange={setSelectedDate}
                 value={selectedDate}
@@ -150,10 +155,10 @@ export default function MyBookings({ hideLayout }) {
                   return (
                     <div className="flex justify-center mt-1 gap-1">
                       {hasPast && (
-                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-500"></div>
                       )}
                       {hasUpcoming && (
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-green-700"></div>
                       )}
                     </div>
                   );
@@ -162,13 +167,13 @@ export default function MyBookings({ hideLayout }) {
             </div>
 
             {/* SELECTED DATE */}
-            <div className="bg-white p-4 rounded-xl shadow">
+            <div className="bg-gray-50 p-4 rounded-xl shadow-sm border border-gray-200">
               <h3 className="font-semibold mb-4">
-                Bookings on {selectedDate.toDateString()}
+                Approved bookings on {selectedDate.toDateString()}
               </h3>
 
               {getBookingsForDate(selectedDate).length === 0 && (
-                <p className="text-gray-500">No bookings</p>
+                <p className="text-gray-500">No approved bookings</p>
               )}
 
               {getBookingsForDate(selectedDate).map((b) => (
@@ -176,23 +181,23 @@ export default function MyBookings({ hideLayout }) {
                   key={b.id}
                   className={`p-4 mb-3 rounded-lg shadow ${
                     isPast(b.endTime)
-                      ? "bg-red-100 border border-red-300"
-                      : "bg-blue-100 border border-blue-300"
+                      ? "bg-gray-100 border border-gray-300"
+                      : "bg-green-100 border border-green-300"
                   }`}
                 >
-                  <p className="font-bold">Resource #{b.resourceId}</p>
-                  <p>
+                  <p className="font-bold text-gray-900">Resource #{b.resourceId}</p>
+                  <p className="text-sm text-gray-700">
                     {new Date(b.startTime).toLocaleTimeString()} -{" "}
                     {new Date(b.endTime).toLocaleTimeString()}
                   </p>
-                  <p>Status: {b.status}</p>
+                  <p className="text-sm text-gray-700">Status: {b.status}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* UPCOMING */}
-          <h3 className="text-lg font-semibold mb-3 text-gray-700">
+          <h3 className="text-lg font-semibold mb-3 text-gray-800">
             Upcoming Bookings
           </h3>
           {upcoming.length === 0 && (
@@ -203,7 +208,7 @@ export default function MyBookings({ hideLayout }) {
           ))}
 
           {/* PAST */}
-          <h3 className="text-lg font-semibold mt-8 mb-3 text-gray-700">
+          <h3 className="text-lg font-semibold mt-8 mb-3 text-gray-800">
             Past Bookings
           </h3>
           {past.length === 0 && (
