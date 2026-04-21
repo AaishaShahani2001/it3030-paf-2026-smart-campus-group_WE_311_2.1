@@ -17,9 +17,9 @@ import MyBookings from "./pages/Booking/MyBookings";
 import MyBookingsCalendar from "./pages/Booking/MyBookingsCalendar";
 
 const AppLayout = ({ children }) => (
-  <div className="min-h-screen bg-gray-100 text-slate-900 flex flex-col font-sans">
+  <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
     <Navbar />
-    <div className="grow bg-gray-100">{children}</div>
+    <div className="grow bg-white">{children}</div>
     <Footer />
   </div>
 );
@@ -33,10 +33,11 @@ const App = () => {
         <Route path="/home" element={<AppLayout><Home /></AppLayout>} />
         <Route path="/resources" element={<AppLayout><Resources /></AppLayout>} />
         <Route path="/admin/dashboard" element={<AppLayout><AdminDashboard /></AppLayout>} />
+        <Route path="/admin/tickets" element={<AppLayout><AdminDashboard /></AppLayout>} />
+        <Route path="/admin/bookings" element={<AppLayout><AdminDashboard /></AppLayout>} />
         <Route path="/technician/dashboard" element={<AppLayout><TechnicianDashboard /></AppLayout>} />
         <Route path="/user/dashboard" element={<AppLayout><UserDashboard /></AppLayout>} />
         <Route path="/admin/facilities" element={<AppLayout><AdminPage /></AppLayout>} />
-        <Route path="/admin/bookings" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/report-an-issue" element={<AppLayout><ReportAnIssue /></AppLayout>} />
 
         <Route path="/login" element={<AppLayout><Login /></AppLayout>} />
