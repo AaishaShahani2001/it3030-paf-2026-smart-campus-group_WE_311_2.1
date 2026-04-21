@@ -214,20 +214,20 @@ const TechOverviewTab = ({ user, stats }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                <div className="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4 transition-all hover:shadow-md hover:border-emerald-200 relative overflow-hidden">
+                <div className="group bg-white rounded-3xl p-6 shadow-lg shadow-gray-200/50 border border-gray-200 flex items-center gap-4 transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-green-200 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-emerald-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     </div>
-                    <div className="w-12 h-12 bg-linear-to-br from-emerald-50 to-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-emerald-600 group-hover:to-emerald-500 group-hover:text-white transition-all duration-300">
+                    <div className="w-12 h-12 bg-linear-to-br from-green-100 to-green-200 text-green-800 rounded-xl flex items-center justify-center shadow-inner group-hover:from-green-800 group-hover:to-green-700 group-hover:text-white transition-all duration-300">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     </div>
                     <div className="relative z-10">
-                        <p className="text-sm font-semibold text-gray-500">Assigned Tasks</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-500">Assigned Tasks</p>
+                        <p className="text-3xl font-extrabold text-gray-900">{stats.total}</p>
                     </div>
                 </div>
 
-                <div className="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4 transition-all hover:shadow-md hover:border-blue-200 relative overflow-hidden">
+                <div className="group bg-white rounded-3xl p-6 shadow-lg shadow-gray-200/50 border border-gray-200 flex items-center gap-4 transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-blue-200 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-blue-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
@@ -235,37 +235,37 @@ const TechOverviewTab = ({ user, stats }) => {
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
                     <div className="relative z-10">
-                        <p className="text-sm font-semibold text-gray-500">In Progress</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-500">In Progress</p>
+                        <p className="text-3xl font-extrabold text-gray-900">{stats.inProgress}</p>
                     </div>
                 </div>
 
-                <div className="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4 transition-all hover:shadow-md hover:border-emerald-200 relative overflow-hidden">
+                <div className="group bg-white rounded-3xl p-6 shadow-lg shadow-gray-200/50 border border-gray-200 flex items-center gap-4 transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-green-200 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-emerald-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
-                    <div className="w-12 h-12 bg-linear-to-br from-emerald-50 to-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-emerald-600 group-hover:to-emerald-500 group-hover:text-white transition-all duration-300">
+                    <div className="w-12 h-12 bg-linear-to-br from-green-100 to-green-200 text-green-800 rounded-xl flex items-center justify-center shadow-inner group-hover:from-green-800 group-hover:to-green-700 group-hover:text-white transition-all duration-300">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
                     <div className="relative z-10">
-                        <p className="text-sm font-semibold text-gray-500">Completed</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.resolved}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-500">Completed</p>
+                        <p className="text-3xl font-extrabold text-gray-900">{stats.resolved}</p>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-4xl shadow-xl shadow-gray-200/40 border border-gray-100 p-8">
+            <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-200 p-8">
                 <h2 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                    <span className="w-8 h-8 rounded-lg bg-green-800 flex items-center justify-center text-white shadow-lg shadow-green-200">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </span>
                     Daily Motivation
                 </h2>
                 <p className="text-gray-600 italic font-medium leading-relaxed">"Quality means doing it right when no one is looking." — Henry Ford</p>
                 <div className="mt-8 flex gap-4">
-                    <div className="flex-1 p-5 rounded-2xl bg-emerald-50 border border-emerald-100 shadow-inner">
-                        <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest mb-1">Efficiency Tip</p>
-                        <p className="text-sm text-emerald-900 font-bold">Remember to capture clear "after" photos for resolved tickets.</p>
+                    <div className="flex-1 p-5 rounded-2xl bg-green-50 border border-green-200 shadow-inner">
+                        <p className="text-[10px] font-black text-green-800 uppercase tracking-widest mb-1">Efficiency Tip</p>
+                        <p className="text-sm text-green-900 font-bold">Remember to capture clear "after" photos for resolved tickets.</p>
                     </div>
                 </div>
             </div>
@@ -455,7 +455,7 @@ const TechJobsTab = ({ token, user }) => {
                         </div>
                     ))
                 ) : tickets.length === 0 ? (
-                    <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-gray-200 shadow-inner">
+                    <div className="col-span-full py-20 text-center bg-white rounded-3xl border-2 border-dashed border-gray-200 shadow-inner">
                         <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
                             <svg className="w-10 h-10 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                         </div>
@@ -463,8 +463,8 @@ const TechJobsTab = ({ token, user }) => {
                         <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-widest">Enjoy the break, technician!</p>
                     </div>
                 ) : tickets.map((ticket) => (
-                    <div key={ticket.id} className="group bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-xl shadow-gray-200/40 hover:shadow-emerald-200/50 hover:border-emerald-200 transition-all duration-500 relative overflow-hidden flex flex-col">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div key={ticket.id} className="group bg-white rounded-3xl p-7 border border-gray-200 shadow-lg shadow-gray-200/50 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-green-200/40 hover:border-green-200 transition-all duration-300 relative overflow-hidden flex flex-col">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                         <div className="flex justify-between items-start mb-6 relative z-10">
                             <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] border ${ticket.priority === 'CRITICAL' ? 'bg-red-50 text-red-600 border-red-100' :
@@ -482,21 +482,21 @@ const TechJobsTab = ({ token, user }) => {
                             </span>
                         </div>
 
-                        <h3 className="text-xl font-black text-gray-900 group-hover:text-emerald-700 transition-colors mb-2 line-clamp-2 uppercase tracking-tight relative z-10 leading-tight">{ticket.title}</h3>
+                        <h3 className="text-xl font-extrabold text-gray-900 group-hover:text-green-800 transition-colors mb-2 line-clamp-2 tracking-tight relative z-10 leading-tight">{ticket.title}</h3>
 
                         <div className="flex items-center gap-2 text-xs font-bold text-gray-400 mb-8 relative z-10">
                             <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             <span className="truncate uppercase tracking-wider">{ticket.location}</span>
                         </div>
 
-                        <div className="mt-auto pt-6 border-t border-gray-50 flex items-center justify-between relative z-10">
+                        <div className="mt-auto pt-6 border-t border-gray-100 flex items-center justify-between relative z-10">
                             <div>
                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Origin</p>
                                 <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{ticket.reporterName}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedTicket(ticket)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 rounded-2xl shadow-xl shadow-emerald-200 transition-all transform hover:scale-110 active:scale-95 group/btn"
+                                className="bg-green-800 hover:bg-green-900 text-white p-3.5 rounded-2xl shadow-lg shadow-green-200 transition-all transform hover:scale-105 active:scale-95 group/btn"
                             >
                                 <svg className="w-6 h-6 group-hover/btn:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
@@ -822,7 +822,7 @@ const TechnicianDashboard = () => {
     }, [token, user?.id, uuidPattern]);
 
     return (
-        <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+        <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-transparent min-h-screen">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 relative transition-all duration-300">
             
             {/* Sidebar Overlay for mobile */}
@@ -870,7 +870,7 @@ const TechnicianDashboard = () => {
                         <Icon className="h-4 w-4" />
                         {link.label}
                       </span>
-                      <ChevronRight className={`h-4 w-4 ${isActive ? 'text-emerald-500' : 'opacity-40'}`} />
+                      {isSidebarOpen && <ChevronRight className={`h-4 w-4 ${isActive ? 'text-emerald-500' : 'opacity-40'}`} />}
                     </button>
                   );
                 })}

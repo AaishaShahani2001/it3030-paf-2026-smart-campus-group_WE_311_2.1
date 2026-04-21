@@ -50,7 +50,7 @@ const UserDashboard = () => {
   }, [location.hash, location.search]);
 
   return (
-    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-transparent min-h-screen">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 relative transition-all duration-300">
         {isSidebarOpen && (
           <div

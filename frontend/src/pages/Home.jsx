@@ -5,7 +5,7 @@ import CTA from '../components/CTA';
 
 const Home = () => {
   return (
-    <div className="selection:bg-indigo-100 selection:text-indigo-900 bg-white">
+    <div className="selection:bg-indigo-100 selection:text-indigo-900 bg-transparent">
       <Hero />
       <HowItWorks />
       <CTA />

@@ -17,12 +17,12 @@
   --color-primary: var(--color-green-700);
   --color-primary-dark: var(--color-green-800);
   --color-secondary: var(--color-slate-200);
-  --color-surface: var(--color-gray-100);
+  --color-surface: var(--color-white);
   --color-text: var(--color-slate-900);
   --color-text-light: var(--color-slate-500);
   --color-danger: var(--color-red-500);
 }
 
 body {
-  @apply bg-gray-100 text-slate-900;
+  @apply bg-white text-slate-900;
 }

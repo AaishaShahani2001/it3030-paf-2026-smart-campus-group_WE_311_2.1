@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -26,8 +26,20 @@ const AdminDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeView, setActiveView] = useState("overview");
 
+  useEffect(() => {
+    if (location.pathname === "/admin/tickets") {
+      setActiveView("tickets");
+      return;
+    }
+    if (location.pathname === "/admin/bookings") {
+      setActiveView("bookings");
+      return;
+    }
+    setActiveView("overview");
+  }, [location.pathname]);
+
   return (
-    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-transparent min-h-screen">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 relative transition-all duration-300">
         
         {/* Sidebar Overlay for mobile */}
