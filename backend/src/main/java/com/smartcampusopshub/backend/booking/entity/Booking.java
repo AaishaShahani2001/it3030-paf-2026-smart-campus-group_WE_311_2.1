@@ -14,6 +14,8 @@ public class Booking {
     private String userId;
 
     private Long resourceId;
+    private String userName;
+    private String occupation;
 
     private LocalDateTime startTime;
     private LocalDateTime endTime;
@@ -21,6 +23,8 @@ public class Booking {
     private String status;
     private String purpose;
     private int attendees;
+    private String rejectReason;
+    
 
     public Long getId() { return id; }
 
@@ -47,4 +51,30 @@ public class Booking {
 
     public int getAttendees() { return attendees; }
     public void setAttendees(int attendees) { this.attendees = attendees; }
+    public String getRejectReason() {
+        return rejectReason;
+    }
+
+    public void setRejectReason(String rejectReason) {
+        this.rejectReason = rejectReason;
+    }
+
+
+        public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getOccupation() {
+        return occupation;
+    }
+
+    public void setOccupation(String occupation) {
+        this.occupation = occupation;
+    }
+
+    
 }

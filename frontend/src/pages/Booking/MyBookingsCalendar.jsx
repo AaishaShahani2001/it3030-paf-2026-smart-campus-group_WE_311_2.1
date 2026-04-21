@@ -1,118 +1,195 @@
-import { useEffect, useState } from "react";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
+import React, { useEffect, useState } from "react";
 
-const MyBookingsCalendar = () => {
+export default function BookingCalendar() {
   const [bookings, setBookings] = useState([]);
+  const [approvedBookings, setApprovedBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // ✅ FETCH BOOKINGS
+  // FETCH BOOKINGS
   useEffect(() => {
-    const email = localStorage.getItem("userEmail");
-
-    fetch(`http://localhost:8080/api/bookings/user-by-email/${email}`)
+    fetch("http://localhost:8080/api/bookings")
       .then((res) => res.json())
       .then((data) => {
-        console.log("ALL BOOKINGS:", data); // debug
-        setBookings(data);
-      })
-      .catch((err) => console.error(err));
+
+        // ✅ NORMALIZE STATUS (VERY IMPORTANT FIX)
+        const normalized = data.map((b) => ({
+          ...b,
+          status: b.status?.toUpperCase().trim(),
+        }));
+
+        setBookings(normalized);
+
+        // ✅ ONLY APPROVED BOOKINGS FOR CALENDAR
+        const approved = normalized.filter(
+          (b) => b.status === "APPROVED"
+        );
+
+        setApprovedBookings(approved);
+      });
   }, []);
 
-  // ✅ NORMALIZE STATUS (🔥 KEY FIX)
-  const isValidStatus = (status) => {
-    const s = status?.trim().toUpperCase();
-    return s === "APPROVED" || s === "PENDING" || s === "WAITLIST";
-  };
+  // ✅ APPROVED BOOKINGS FOR SELECTED DATE
+  const selectedApprovedBookings = approvedBookings.filter(
+    (b) =>
+      new Date(b.startTime).toDateString() ===
+      selectedDate.toDateString()
+  );
 
-  // ✅ FILTER FOR SELECTED DATE
-  const getBookingsForDate = (date) => {
-    return bookings.filter((b) => {
+  // ✅ DATES WITH APPROVED BOOKINGS
+  const approvedDates = approvedBookings.map((b) =>
+    new Date(b.startTime).toDateString()
+  );
 
-      console.log("CHECK STATUS:", b.status, "->", b.status?.trim().toUpperCase());
-
-      const sameDate =
-        new Date(b.startTime).toDateString() === date.toDateString();
-
-      return sameDate && isValidStatus(b.status); // ✅ CLEAN
-    });
-  };
-
-  const isPast = (date) => new Date(date) < new Date();
+  // ✅ UPCOMING BOOKINGS (ALL STATUS)
+  const upcomingBookings = bookings.filter(
+    (b) => new Date(b.startTime) > new Date()
+  );
 
   return (
-    <>
-      <Navbar />
+    <div className="space-y-10">
 
-      <main className="pt-24 pb-12 max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">My Bookings Calendar</h1>
+      {/* ================= CALENDAR ================= */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* CALENDAR */}
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h2 className="text-xl font-bold mb-4">
+            {selectedDate.toDateString()}
+          </h2>
 
-          {/* ✅ CALENDAR */}
-          <div className="bg-white p-4 rounded-xl shadow">
-            <Calendar
-              onChange={setSelectedDate}
-              value={selectedDate}
-              tileContent={({ date }) => {
+          <div className="grid grid-cols-7 gap-2">
+            {[...Array(30)].map((_, i) => {
+              const day = new Date(2026, 3, i + 1);
 
-                const dayBookings = bookings.filter((b) => {
-                  const sameDate =
-                    new Date(b.startTime).toDateString() === date.toDateString();
+              const isSelected =
+                day.toDateString() === selectedDate.toDateString();
 
-                  return sameDate && isValidStatus(b.status);
-                });
+              const hasBooking = approvedDates.includes(
+                day.toDateString()
+              );
 
-                if (dayBookings.length === 0) return null;
+              return (
+                <div
+                  key={i}
+                  onClick={() => setSelectedDate(day)}
+                  className={`p-3 text-center rounded cursor-pointer transition
+                    ${
+                      isSelected
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 hover:bg-gray-200"
+                    }
+                  `}
+                >
+                  {i + 1}
 
-                return (
-                  <div className="flex justify-center mt-1">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  </div>
-                );
-              }}
-            />
+                  {/* ✅ ONLY APPROVED DOT */}
+                  {hasBooking && (
+                    <div className="w-2 h-2 bg-blue-500 mx-auto mt-1 rounded-full"></div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-
-          {/* ✅ BOOKINGS LIST */}
-          <div className="bg-white p-4 rounded-xl shadow">
-
-            <h2 className="font-semibold mb-4">
-              Bookings on {selectedDate.toDateString()}
-            </h2>
-
-            {getBookingsForDate(selectedDate).length === 0 && (
-              <p className="text-gray-500">No bookings</p>
-            )}
-
-            {getBookingsForDate(selectedDate).map((b) => (
-              <div
-                key={b.id}
-                className={`p-4 mb-3 rounded-lg shadow ${
-                  isPast(b.endTime)
-                    ? "bg-red-100 border border-red-300"
-                    : "bg-blue-100 border border-blue-300"
-                }`}
-              >
-                <p className="font-bold">Resource #{b.resourceId}</p>
-                <p>
-                  {new Date(b.startTime).toLocaleTimeString()} -{" "}
-                  {new Date(b.endTime).toLocaleTimeString()}
-                </p>
-                <p>Status: {b.status}</p>
-              </div>
-            ))}
-
-          </div>
-
         </div>
-      </main>
 
-      <Footer />
-    </>
+        {/* APPROVED BOOKINGS DETAILS */}
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h2 className="text-xl font-bold mb-4">
+            Bookings on {selectedDate.toDateString()}
+          </h2>
+
+          {selectedApprovedBookings.length === 0 ? (
+            <p className="text-gray-500">
+              No approved bookings
+            </p>
+          ) : (
+            selectedApprovedBookings.map((b) => {
+              const isPast =
+                new Date(b.endTime) < new Date();
+
+              return (
+                <div
+                  key={b.id}
+                  className="p-4 mb-4 rounded-xl border bg-blue-50"
+                >
+                  <h3 className="font-semibold">
+                    Resource #{b.resourceId}
+                  </h3>
+
+                  <p>
+                    {new Date(b.startTime).toLocaleTimeString()} -{" "}
+                    {new Date(b.endTime).toLocaleTimeString()}
+                  </p>
+
+                  <p className="text-green-600 font-semibold text-sm">
+                    APPROVED
+                  </p>
+
+                  <p
+                    className={`text-xs mt-1 ${
+                      isPast
+                        ? "text-gray-400"
+                        : "text-green-500"
+                    }`}
+                  >
+                    {isPast
+                      ? "Past Booking"
+                      : "Upcoming Booking"}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ================= UPCOMING BOOKINGS ================= */}
+      <div>
+        <h2 className="text-xl font-bold mb-4">
+          Upcoming Bookings
+        </h2>
+
+        {upcomingBookings.length === 0 ? (
+          <p className="text-gray-500">
+            No upcoming bookings
+          </p>
+        ) : (
+          upcomingBookings.map((b) => (
+            <div
+              key={b.id}
+              className="p-4 mb-4 border rounded-xl bg-white shadow-sm flex justify-between items-center"
+            >
+              <div>
+                <h3 className="font-semibold">
+                  Resource #{b.resourceId}
+                </h3>
+
+                <p className="text-sm text-gray-600">
+                  {new Date(b.startTime).toLocaleString()} →{" "}
+                  {new Date(b.endTime).toLocaleString()}
+                </p>
+              </div>
+
+              {/* STATUS BADGE */}
+              <span
+                className={`text-xs font-semibold px-3 py-1 rounded-full
+                  ${
+                    b.status === "APPROVED"
+                      ? "bg-green-100 text-green-600"
+                      : b.status === "PENDING"
+                      ? "bg-yellow-100 text-yellow-600"
+                      : b.status === "REJECTED"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-gray-100 text-gray-500"
+                  }
+                `}
+              >
+                {b.status}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
-};
-
-export default MyBookingsCalendar;
+}

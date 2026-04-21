@@ -30,20 +30,21 @@ public class BookingService {
         booking.setPurpose(dto.getPurpose());
         booking.setAttendees(dto.getAttendees());
         booking.setStatus("PENDING");
+
         User user = userRepository.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // UUID → Long convert (temporary fix)
         booking.setUserId(user.getId().toString());
-
+        booking.setUserName(dto.getUserName());
+        booking.setOccupation(dto.getOccupation());
         
 
         List<Booking> conflicts = bookingRepository
-            .findConflictingBookings(
-                booking.getResourceId(),
-                booking.getEndTime(),
-                booking.getStartTime()
-            );
+                .findConflictingBookings(
+                        booking.getResourceId(),
+                        booking.getEndTime(),
+                        booking.getStartTime()
+                );
 
         if (!conflicts.isEmpty()) {
 
@@ -56,39 +57,60 @@ public class BookingService {
             booking.setStatus("WAITLIST");
             Booking saved = bookingRepository.save(booking);
 
-            return new BookingResponseDTO(
-                    saved.getId(),
-                    "WAITLIST",
-                    "Slot unavailable. Try: " + suggestion
-            );
+            return buildDTO(saved, "Slot unavailable...");
         }
 
         Booking saved = bookingRepository.save(booking);
 
-        return new BookingResponseDTO(
-                saved.getId(),
-                "APPROVED",
-                "Booking created successfully"
+        return buildDTO(saved, "Booking created successfully");
+    }
+
+    // ✅ FIXED HERE (IMPORTANT)
+       private BookingResponseDTO buildDTO(Booking booking, String message) {
+            return new BookingResponseDTO(
+            booking.getId(),
+            booking.getStatus(),
+            message,
+            booking.getUserName(),   // ✅ FORM NAME ONLY
+            booking.getOccupation(),
+            booking.getResourceId(),
+            booking.getStartTime(),
+            booking.getEndTime(),
+            booking.getPurpose()
         );
-    }
-
+}
     // GET ALL
-    public List<Booking> getAllBookings() {
-        return bookingRepository.findAll();
+    public List<BookingResponseDTO> getAllBookings() {
+        return bookingRepository.findAll()
+                .stream()
+                .map(this::convertToDTO)
+                .toList();
     }
 
-    // GET BY ID
+    // CONVERT TO DTO
+    private BookingResponseDTO convertToDTO(Booking booking) {
+    return new BookingResponseDTO(
+            booking.getId(),
+            booking.getStatus(),
+            booking.getPurpose(),
+            booking.getUserName(),
+            booking.getOccupation(),
+            booking.getResourceId(),
+            booking.getStartTime(),
+            booking.getEndTime(),
+            booking.getPurpose()
+    );
+}
+
     public Booking getBookingById(Long id) {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
     }
 
-    // DELETE
     public void deleteBooking(Long id) {
         bookingRepository.deleteById(id);
     }
 
-    // APPROVE
     public Booking approveBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
@@ -97,16 +119,16 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    // REJECT
-    public Booking rejectBooking(Long id) {
+    public Booking rejectBooking(Long id, String reason) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
         booking.setStatus("REJECTED");
+        booking.setRejectReason(reason);
+
         return bookingRepository.save(booking);
     }
 
-    // GET PENDING
     public List<Booking> getPendingBookings() {
         return bookingRepository.findAll()
                 .stream()
@@ -114,7 +136,6 @@ public class BookingService {
                 .toList();
     }
 
-    // AUTO SLOT LOGIC
     public String findNextAvailableSlot(Long resourceId, LocalDateTime start, LocalDateTime end) {
 
         List<Booking> bookings = bookingRepository
@@ -138,7 +159,6 @@ public class BookingService {
         return last.getEndTime() + " to " + last.getEndTime().plusHours(1);
     }
 
-    // GET WAITLIST
     public List<Booking> getWaitlistBookings() {
         return bookingRepository.findAll()
                 .stream()
@@ -146,7 +166,6 @@ public class BookingService {
                 .toList();
     }
 
-    // ✅ GET BOOKINGS BY USER EMAIL (FINAL FIX)
     public List<Booking> getBookingsByEmail(String email) {
 
         User user = userRepository.findByEmail(email)
@@ -159,9 +178,30 @@ public class BookingService {
 
     public Booking cancelBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
 
         booking.setStatus("CANCELLED");
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        promoteWaitlist(booking.getResourceId());
+
+        return saved;
+    }
+
+    public void promoteWaitlist(Long resourceId) {
+        List<Booking> waitlist = bookingRepository.findAll()
+                .stream()
+                .filter(b ->
+                        resourceId.equals(b.getResourceId()) &&
+                                "WAITLIST".equals(b.getStatus())
+                )
+                .sorted((a, b) -> a.getStartTime().compareTo(b.getStartTime()))
+                .toList();
+
+        if (!waitlist.isEmpty()) {
+            Booking next = waitlist.get(0);
+            next.setStatus("APPROVED");
+            bookingRepository.save(next);
+        }
     }
 }
