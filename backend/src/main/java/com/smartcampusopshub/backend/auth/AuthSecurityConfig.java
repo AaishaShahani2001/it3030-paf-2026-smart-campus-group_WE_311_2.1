@@ -1,5 +1,7 @@
 package com.smartcampusopshub.backend.auth;
 
+import com.smartcampusopshub.backend.auth.security.CustomOAuth2UserService;
+import com.smartcampusopshub.backend.auth.security.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,24 +18,34 @@ import java.util.List;
 public class AuthSecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
-    public AuthSecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public AuthSecurityConfig(JwtAuthFilter jwtAuthFilter,
+                              CustomOAuth2UserService customOAuth2UserService,
+                              OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .securityMatcher("/auth/**")
+            .securityMatcher("/auth/**", "/oauth2/**", "/login/oauth2/**")
             .cors(cors -> cors.configurationSource(authCorsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/auth/register", "/auth/token").permitAll()
+                .requestMatchers("/auth/register", "/auth/token", "/auth/google", "/oauth2/**", "/login/oauth2/**").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form.disable())
             .httpBasic(httpBasic -> httpBasic.disable())
+            .oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                .successHandler(oAuth2AuthenticationSuccessHandler)
+            )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
