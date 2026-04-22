@@ -103,6 +103,12 @@ const PRIORITY_META = {
   HIGH: { label: "High", chip: "bg-orange-50 text-orange-700 ring-orange-200" },
   CRITICAL: { label: "Critical", chip: "bg-rose-50 text-rose-700 ring-rose-200" },
 };
+const PRIORITY_DURATION = {
+  LOW: 72,
+  MEDIUM: 48,
+  HIGH: 24,
+  CRITICAL: 8,
+};
 
 const CATEGORIES = [
   "ELECTRICAL",
@@ -119,6 +125,11 @@ const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
 const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.OPEN;
 const getPriorityMeta = (priority) => PRIORITY_META[priority] || PRIORITY_META.MEDIUM;
+const getPriorityDuration = (priority) => PRIORITY_DURATION[priority] || PRIORITY_DURATION.MEDIUM;
+const formatPriorityDuration = (priority) => {
+  const hours = getPriorityDuration(priority);
+  return `${hours} hour${hours === 1 ? "" : "s"}`;
+};
 
 const formatDateTime = (value) => {
   if (!value) return "—";
@@ -140,6 +151,7 @@ const AllTickets = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const token = getToken();
   const reporterEmail = getReporterEmailFromAuthState();
@@ -213,6 +225,23 @@ const AllTickets = () => {
       return bTime - aTime;
     });
   }, [tickets]);
+
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(sortedTickets.length / PAGE_SIZE));
+  const paginatedTickets = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return sortedTickets.slice(start, start + PAGE_SIZE);
+  }, [sortedTickets, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortedTickets.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const canMutate = (ticket) => (ticket?.status || "OPEN") === "OPEN";
 
@@ -473,7 +502,7 @@ const AllTickets = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {sortedTickets.map((t) => {
+                {paginatedTickets.map((t) => {
                   const statusMeta = getStatusMeta(t.status);
                   const priorityMeta = getPriorityMeta(t.priority);
                   const mutable = canMutate(t);
@@ -512,10 +541,15 @@ const AllTickets = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${priorityMeta.chip}`}>
-                          {(t.priority === "HIGH" || t.priority === "CRITICAL") && <AlertTriangle className="w-3.5 h-3.5" />}
-                          {priorityMeta.label}
-                        </span>
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${priorityMeta.chip}`}>
+                            {(t.priority === "HIGH" || t.priority === "CRITICAL") && <AlertTriangle className="w-3.5 h-3.5" />}
+                            {priorityMeta.label}
+                          </span>
+                          <span className="text-[10px] font-semibold tracking-wide text-gray-600">
+                            Resolution Time: {formatPriorityDuration(t.priority)}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 align-top">
                         <div className="flex justify-end gap-1.5">
@@ -558,6 +592,31 @@ const AllTickets = () => {
         </div>
       )}
 
+      {sortedTickets.length > 0 && (
+        <div className="flex items-center justify-end gap-2 text-xs text-gray-500">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-2 py-1 rounded border border-gray-200 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <span>
+            Page <span className="font-semibold text-gray-700">{currentPage}</span> of{" "}
+            <span className="font-semibold text-gray-700">{totalPages}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-2 py-1 rounded border border-gray-200 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
       {viewTicket && createPortal(
         <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100">
@@ -591,10 +650,15 @@ const AllTickets = () => {
                 {(() => {
                   const meta = getPriorityMeta(viewTicket.priority);
                   return (
-                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${meta.chip}`}>
-                      {(viewTicket.priority === "HIGH" || viewTicket.priority === "CRITICAL") && <AlertTriangle className="w-3.5 h-3.5" />}
-                      {meta.label}
-                    </span>
+                    <div className="inline-flex flex-col items-start gap-1.5">
+                      <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${meta.chip}`}>
+                        {(viewTicket.priority === "HIGH" || viewTicket.priority === "CRITICAL") && <AlertTriangle className="w-3.5 h-3.5" />}
+                        {meta.label}
+                      </span>
+                      <span className="text-[10px] font-semibold tracking-wide text-gray-600">
+                        Resolution Time: {formatPriorityDuration(viewTicket.priority)}
+                      </span>
+                    </div>
                   );
                 })()}
                 <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-600 ring-gray-200">

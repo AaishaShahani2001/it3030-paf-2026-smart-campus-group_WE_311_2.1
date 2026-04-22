@@ -32,9 +32,20 @@ const PRIORITY_META = {
   HIGH: { label: "High", chip: "bg-orange-50 text-orange-700 ring-orange-200" },
   CRITICAL: { label: "Critical", chip: "bg-rose-50 text-rose-700 ring-rose-200" },
 };
+const PRIORITY_DURATION = {
+  LOW: 72,
+  MEDIUM: 48,
+  HIGH: 24,
+  CRITICAL: 8,
+};
 
 const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.OPEN;
 const getPriorityMeta = (priority) => PRIORITY_META[priority] || PRIORITY_META.MEDIUM;
+const getPriorityDuration = (priority) => PRIORITY_DURATION[priority] || PRIORITY_DURATION.MEDIUM;
+const formatPriorityDuration = (priority) => {
+  const hours = getPriorityDuration(priority);
+  return `${hours} hour${hours === 1 ? "" : "s"}`;
+};
 const STATUS_KEYS = ["OPEN", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED", "REJECTED"];
 
 // Formats total turnaround time from ticket creation to resolution.
@@ -53,6 +64,28 @@ const formatResolutionDuration = (createdAt, resolvedAt) => {
   if (hours > 0 || days > 0) parts.push(`${hours}h`);
   parts.push(`${minutes}m`);
   return parts.join(" ");
+};
+
+const TERMINAL_STATUSES = new Set(["RESOLVED", "CLOSED", "REJECTED"]);
+
+const formatSlaCountdown = (ticket) => {
+  if (!ticket?.slaResolutionDeadline) return null;
+  if (TERMINAL_STATUSES.has(ticket.status)) return null;
+
+  const remainingMinutesRaw =
+    typeof ticket.resolutionMinutesRemaining === "number"
+      ? ticket.resolutionMinutesRemaining
+      : Math.floor((new Date(ticket.slaResolutionDeadline).getTime() - Date.now()) / 60000);
+  const overdue = remainingMinutesRaw < 0;
+  const remainingMinutes = Math.abs(remainingMinutesRaw);
+  const days = Math.floor(remainingMinutes / (24 * 60));
+  const hours = Math.floor((remainingMinutes % (24 * 60)) / 60);
+  const minutes = remainingMinutes % 60;
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return { overdue, label: `${overdue ? "Overdue" : "Due in"} ${parts.join(" ")}` };
 };
 
 const parseResponse = async (response) => {
@@ -180,6 +213,8 @@ const RaisedTickets = () => {
   const [isPostingReply, setIsPostingReply] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [dueStatusFilter, setDueStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const visibleTickets = useMemo(() => {
     // Apply newest-first ordering, then local status/search filtering.
@@ -191,6 +226,12 @@ const RaisedTickets = () => {
     });
     return sorted.filter((ticket) => {
       if (statusFilter !== "ALL" && (ticket.status || "OPEN") !== statusFilter) return false;
+      if (dueStatusFilter !== "ALL") {
+        const dueMeta = formatSlaCountdown(ticket);
+        if (dueStatusFilter === "OVERDUE" && !dueMeta?.overdue) return false;
+        if (dueStatusFilter === "DUE_SOON" && (!dueMeta || dueMeta.overdue)) return false;
+        if (dueStatusFilter === "NO_DEADLINE" && dueMeta) return false;
+      }
       if (!query) return true;
       const haystack = [
         ticket.title,
@@ -205,7 +246,24 @@ const RaisedTickets = () => {
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [tickets, search, statusFilter]);
+  }, [tickets, search, statusFilter, dueStatusFilter]);
+
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(visibleTickets.length / PAGE_SIZE));
+  const paginatedTickets = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return visibleTickets.slice(start, start + PAGE_SIZE);
+  }, [visibleTickets, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, dueStatusFilter, tickets.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const stats = useMemo(() => {
     // Build dashboard summary cards from loaded ticket statuses.
@@ -723,8 +781,8 @@ const RaisedTickets = () => {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="relative w-full md:max-w-xs">
+        <div className="px-5 py-4 border-b border-gray-100 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_14rem_14rem] gap-3 items-center">
+          <div className="relative w-full">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="search"
@@ -748,25 +806,17 @@ const RaisedTickets = () => {
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto">
-            {["ALL", ...STATUS_KEYS].map((key) => {
-              const active = statusFilter === key;
-              const label = key === "ALL" ? "All" : getStatusMeta(key).label;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setStatusFilter(key)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition whitespace-nowrap ${
-                    active
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          <div className="w-full md:w-56">
+            <select
+              value={dueStatusFilter}
+              onChange={(e) => setDueStatusFilter(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition"
+            >
+              <option value="ALL">All Due Statuses</option>
+              <option value="DUE_SOON">Due In</option>
+              <option value="OVERDUE">Overdue</option>
+              <option value="NO_DEADLINE">No Deadline</option>
+            </select>
           </div>
         </div>
 
@@ -780,13 +830,14 @@ const RaisedTickets = () => {
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500">Status</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500">Assignee</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500">Created</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500">Due Status</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="px-5 py-16 text-center">
+                  <td colSpan="8" className="px-5 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
                       <p className="text-sm font-medium text-gray-500">Loading tickets...</p>
@@ -795,20 +846,20 @@ const RaisedTickets = () => {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="7" className="px-5 py-16 text-center">
+                  <td colSpan="8" className="px-5 py-16 text-center">
                     <p className="text-sm font-medium text-rose-600">{error}</p>
                   </td>
                 </tr>
               ) : visibleTickets.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-5 py-16 text-center">
+                  <td colSpan="8" className="px-5 py-16 text-center">
                     <p className="text-sm font-medium text-gray-500">
                       {tickets.length === 0 ? "No tickets have been raised yet." : "No tickets match the current filters."}
                     </p>
                   </td>
                 </tr>
               ) : (
-                visibleTickets.map((ticket) => {
+                paginatedTickets.map((ticket) => {
                   const statusMeta = getStatusMeta(ticket.status);
                   const priorityMeta = getPriorityMeta(ticket.priority);
                   const createdLabel = ticket.createdAt
@@ -820,6 +871,7 @@ const RaisedTickets = () => {
                         minute: "2-digit",
                       })
                     : "—";
+                  const slaCountdown = formatSlaCountdown(ticket);
                   return (
                     <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-4 align-middle">
@@ -834,12 +886,17 @@ const RaisedTickets = () => {
                         <p className="text-sm font-medium text-gray-800">{ticket.reporterName || "Unknown"}</p>
                       </td>
                       <td className="px-5 py-4 align-middle">
-                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${priorityMeta.chip}`}>
-                          {(ticket.priority === "HIGH" || ticket.priority === "CRITICAL") && (
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                          )}
-                          {priorityMeta.label}
-                        </span>
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${priorityMeta.chip}`}>
+                            {(ticket.priority === "HIGH" || ticket.priority === "CRITICAL") && (
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                            )}
+                            {priorityMeta.label}
+                          </span>
+                          <span className="text-[10px] font-semibold tracking-wide text-gray-600">
+                            Resolution Time: {formatPriorityDuration(ticket.priority)}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-5 py-4 align-middle">
                         <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusMeta.chip}`}>
@@ -869,6 +926,21 @@ const RaisedTickets = () => {
                       <td className="px-5 py-4 align-middle">
                         <span className="text-xs text-gray-500">{createdLabel}</span>
                       </td>
+                      <td className="px-5 py-4 align-middle">
+                        {slaCountdown ? (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${
+                              slaCountdown.overdue
+                                ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                : "bg-sky-50 text-sky-700 border border-sky-200"
+                            }`}
+                          >
+                            {slaCountdown.label}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-5 py-4 align-middle text-right">
                         <button
                           type="button"
@@ -890,10 +962,36 @@ const RaisedTickets = () => {
         {!loading && !error && visibleTickets.length > 0 && (
           <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between text-xs text-gray-500">
             <span>
-              Showing <span className="font-semibold text-gray-700">{visibleTickets.length}</span> of{" "}
+              Showing{" "}
+              <span className="font-semibold text-gray-700">
+                {Math.min((currentPage - 1) * PAGE_SIZE + 1, visibleTickets.length)}-
+                {Math.min(currentPage * PAGE_SIZE, visibleTickets.length)}
+              </span>{" "}
+              of{" "}
               <span className="font-semibold text-gray-700">{tickets.length}</span> tickets
             </span>
-            <span className="hidden sm:inline">Sorted by newest first</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2 py-1 rounded border border-gray-200 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              <span className="hidden sm:inline">
+                Page <span className="font-semibold text-gray-700">{currentPage}</span> of{" "}
+                <span className="font-semibold text-gray-700">{totalPages}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 rounded border border-gray-200 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -948,18 +1046,35 @@ const RaisedTickets = () => {
                             const meta = getPriorityMeta(ticketDetails?.priority || selectedTicket?.priority);
                             const priority = ticketDetails?.priority || selectedTicket?.priority;
                             return (
-                              <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${meta.chip}`}>
-                                {(priority === "HIGH" || priority === "CRITICAL") && (
-                                  <AlertTriangle className="w-3.5 h-3.5" />
-                                )}
-                                {meta.label}
-                              </span>
+                              <div className="flex flex-col items-start gap-1.5">
+                                <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${meta.chip}`}>
+                                  {(priority === "HIGH" || priority === "CRITICAL") && (
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                  )}
+                                  {meta.label}
+                                </span>
+                                <span className="text-[10px] font-semibold tracking-wide text-gray-600">
+                                  Resolution Time: {formatPriorityDuration(priority)}
+                                </span>
+                              </div>
                             );
                           })()}
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                           <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Location</p>
                           <p className="text-sm font-semibold text-gray-900">{ticketDetails?.location || selectedTicket?.location || "—"}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Resolution Deadline</p>
+                          {(() => {
+                            const slaCountdown = formatSlaCountdown(ticketDetails || selectedTicket);
+                            if (!slaCountdown) return <p className="text-sm font-semibold text-gray-400">—</p>;
+                            return (
+                              <p className={`text-sm font-black uppercase tracking-tight ${slaCountdown.overdue ? "text-rose-600" : "text-sky-700"}`}>
+                                {slaCountdown.label}
+                              </p>
+                            );
+                          })()}
                         </div>
                       </div>
 
