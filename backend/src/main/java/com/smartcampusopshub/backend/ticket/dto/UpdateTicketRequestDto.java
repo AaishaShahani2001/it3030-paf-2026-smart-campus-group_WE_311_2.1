@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class CreateTicketRequestDto {
+public class UpdateTicketRequestDto {
 
     @NotBlank
     @Size(max = 255)

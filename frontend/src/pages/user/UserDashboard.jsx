@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -9,21 +9,48 @@ import {
   X,
 } from "lucide-react";
 import AllTickets from "../../components/user/AllTickets";
+import MyBookings from "../../pages/Booking/MyBookings";
+import { CalendarDays } from "lucide-react";
 
 const sidebarLinks = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "tickets", label: "My tickets", icon: TicketIcon },
   { label: "Report an issue", to: "/report-an-issue", icon: AlertTriangle },
+  { id: "bookings", label: "My bookings", icon: CalendarDays },
 ];
 
 const UserDashboard = () => {
   const location = useLocation();
   const currentUsername = localStorage.getItem("username") || "Student";
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sectionParam = params.get("section");
+    const hashSection = window.location.hash.replace("#", "");
+    if (sectionParam === "tickets" || hashSection === "tickets") return "tickets";
+    if (sectionParam === "bookings" || hashSection === "bookings") return "bookings";
+    return "overview";
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const sectionParam = params.get("section");
+    const hashSection = location.hash.replace("#", "");
+    if (sectionParam === "tickets" || hashSection === "tickets") {
+      setActiveSection("tickets");
+      return;
+    }
+    if (sectionParam === "bookings" || hashSection === "bookings") {
+      setActiveSection("bookings");
+      return;
+    }
+    if (sectionParam === "overview" || hashSection === "overview") {
+      setActiveSection("overview");
+    }
+  }, [location.hash, location.search]);
+
   return (
-    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-transparent min-h-screen">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 relative transition-all duration-300">
         {isSidebarOpen && (
           <div
@@ -187,6 +214,9 @@ const UserDashboard = () => {
               </div>
             )}
           </div>
+          {activeSection === "bookings" && (
+              <MyBookings hideLayout={true} />
+            )}
         </section>
       </div>
     </main>

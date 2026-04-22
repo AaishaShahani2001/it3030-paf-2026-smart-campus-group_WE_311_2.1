@@ -8,9 +8,11 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 
 const parseResponse = async (response) => {
+    // Normalize API responses for shared error/success handling.
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
         return response.json();
@@ -20,6 +22,7 @@ const parseResponse = async (response) => {
 };
 
 const openAttachmentWithAuth = async (downloadUrl, token, fileName) => {
+    // Open protected attachments in a new tab with bearer auth.
     if (!downloadUrl || !token) {
         throw new Error("Missing attachment URL or authentication token.");
     }
@@ -156,7 +159,7 @@ const TicketTimeline = ({ ticket, comments }) => {
         });
     }
 
-    // Sort events chronologically
+    // Sort events chronologically so timeline always renders in natural order.
     events.sort((a, b) => a.date - b.date);
 
     const getColorClasses = (color) => {
@@ -214,20 +217,20 @@ const TechOverviewTab = ({ user, stats }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                <div className="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4 transition-all hover:shadow-md hover:border-emerald-200 relative overflow-hidden">
+                <div className="group bg-white rounded-3xl p-6 shadow-lg shadow-gray-200/50 border border-gray-200 flex items-center gap-4 transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-green-200 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-emerald-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     </div>
-                    <div className="w-12 h-12 bg-linear-to-br from-emerald-50 to-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-emerald-600 group-hover:to-emerald-500 group-hover:text-white transition-all duration-300">
+                    <div className="w-12 h-12 bg-linear-to-br from-green-100 to-green-200 text-green-800 rounded-xl flex items-center justify-center shadow-inner group-hover:from-green-800 group-hover:to-green-700 group-hover:text-white transition-all duration-300">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     </div>
                     <div className="relative z-10">
-                        <p className="text-sm font-semibold text-gray-500">Assigned Tasks</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-500">Assigned Tasks</p>
+                        <p className="text-3xl font-extrabold text-gray-900">{stats.total}</p>
                     </div>
                 </div>
 
-                <div className="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4 transition-all hover:shadow-md hover:border-blue-200 relative overflow-hidden">
+                <div className="group bg-white rounded-3xl p-6 shadow-lg shadow-gray-200/50 border border-gray-200 flex items-center gap-4 transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-blue-200 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-blue-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
@@ -235,37 +238,37 @@ const TechOverviewTab = ({ user, stats }) => {
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
                     <div className="relative z-10">
-                        <p className="text-sm font-semibold text-gray-500">In Progress</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-500">In Progress</p>
+                        <p className="text-3xl font-extrabold text-gray-900">{stats.inProgress}</p>
                     </div>
                 </div>
 
-                <div className="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4 transition-all hover:shadow-md hover:border-emerald-200 relative overflow-hidden">
+                <div className="group bg-white rounded-3xl p-6 shadow-lg shadow-gray-200/50 border border-gray-200 flex items-center gap-4 transition-all hover:shadow-xl hover:-translate-y-0.5 hover:border-green-200 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-[2] group-hover:rotate-0">
                         <svg className="w-16 h-16 text-emerald-900" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
-                    <div className="w-12 h-12 bg-linear-to-br from-emerald-50 to-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:from-emerald-600 group-hover:to-emerald-500 group-hover:text-white transition-all duration-300">
+                    <div className="w-12 h-12 bg-linear-to-br from-green-100 to-green-200 text-green-800 rounded-xl flex items-center justify-center shadow-inner group-hover:from-green-800 group-hover:to-green-700 group-hover:text-white transition-all duration-300">
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
                     <div className="relative z-10">
-                        <p className="text-sm font-semibold text-gray-500">Completed</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.resolved}</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-500">Completed</p>
+                        <p className="text-3xl font-extrabold text-gray-900">{stats.resolved}</p>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-4xl shadow-xl shadow-gray-200/40 border border-gray-100 p-8">
+            <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-200 p-8">
                 <h2 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                    <span className="w-8 h-8 rounded-lg bg-green-800 flex items-center justify-center text-white shadow-lg shadow-green-200">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </span>
                     Daily Motivation
                 </h2>
                 <p className="text-gray-600 italic font-medium leading-relaxed">"Quality means doing it right when no one is looking." — Henry Ford</p>
                 <div className="mt-8 flex gap-4">
-                    <div className="flex-1 p-5 rounded-2xl bg-emerald-50 border border-emerald-100 shadow-inner">
-                        <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest mb-1">Efficiency Tip</p>
-                        <p className="text-sm text-emerald-900 font-bold">Remember to capture clear "after" photos for resolved tickets.</p>
+                    <div className="flex-1 p-5 rounded-2xl bg-green-50 border border-green-200 shadow-inner">
+                        <p className="text-[10px] font-black text-green-800 uppercase tracking-widest mb-1">Efficiency Tip</p>
+                        <p className="text-sm text-green-900 font-bold">Remember to capture clear "after" photos for resolved tickets.</p>
                     </div>
                 </div>
             </div>
@@ -286,8 +289,14 @@ const TechJobsTab = ({ token, user }) => {
     const [rejectionReason, setRejectionReason] = useState('');
     const [showRejectBox, setShowRejectBox] = useState(false);
     const [attachmentError, setAttachmentError] = useState("");
+    const [newComment, setNewComment] = useState("");
+    const [isPostingComment, setIsPostingComment] = useState(false);
+
+    const activeTicket = fullTicketDetails || selectedTicket;
+    const activeStatus = activeTicket?.status;
 
     const fetchAssignedTickets = async () => {
+        // Fetch tickets assigned to the logged-in technician.
         try {
             setLoading(true);
             const response = await fetch(`/api/v1/tickets?assigneeId=${user.id}&size=50`, {
@@ -316,6 +325,7 @@ const TechJobsTab = ({ token, user }) => {
             setShowResolutionBox(false);
             setRejectionReason('');
             setShowRejectBox(false);
+            setNewComment("");
             return;
         }
 
@@ -349,7 +359,75 @@ const TechJobsTab = ({ token, user }) => {
         fetchTicketDetails();
     }, [selectedTicket, token]);
 
+    const refreshComments = async (ticketId) => {
+        // Refresh only comments when posting replies/updates.
+        if (!ticketId || !token) return;
+        try {
+            const commentsRes = await fetch(`/api/v1/tickets/${ticketId}/comments`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const commentsPayload = await parseResponse(commentsRes);
+            if (commentsRes.ok && commentsPayload?.success) {
+                setTicketComments(commentsPayload.data.content || []);
+            }
+        } catch (err) {
+            console.error("Comment refresh failed", err);
+        }
+    };
+
+    const refreshSelectedTicket = async (ticketId) => {
+        // Rehydrate selected ticket details after status/comment actions.
+        if (!ticketId || !token) return;
+        try {
+            const res = await fetch(`/api/v1/tickets/${ticketId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const payload = await parseResponse(res);
+            if (res.ok && payload?.success) {
+                setFullTicketDetails(payload.data);
+                setSelectedTicket((prev) => prev ? { ...prev, ...payload.data } : prev);
+                setResolutionNotes(payload.data.resolutionNotes || '');
+                setRejectionReason(payload.data.rejectionReason || '');
+            }
+            await refreshComments(ticketId);
+        } catch (err) {
+            console.error("Ticket refresh failed", err);
+        }
+    };
+
+    const handlePostComment = async () => {
+        // Post a regular technician progress/update comment.
+        const trimmed = newComment.trim();
+        if (!trimmed) return;
+        if (!selectedTicket?.id || !token) return;
+
+        setIsPostingComment(true);
+        try {
+            const response = await fetch(`/api/v1/tickets/${selectedTicket.id}/comments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ content: `Technician update: ${trimmed}` })
+            });
+            if (!response.ok) {
+                const payload = await parseResponse(response);
+                throw new Error(payload?.message || "Failed to post comment.");
+            }
+            setNewComment("");
+            await refreshSelectedTicket(selectedTicket.id);
+            toast.success("Comment posted.");
+        } catch (err) {
+            console.error("Post comment failed", err);
+            toast.error(err.message || "Failed to post comment.");
+        } finally {
+            setIsPostingComment(false);
+        }
+    };
+
     const handleUpdateStatus = async (newStatus) => {
+        // Generic status transition handler with required-note validations.
         if (newStatus === 'RESOLVED' && !resolutionNotes.trim()) {
             alert("Please provide resolution notes before completing the job.");
             return;
@@ -373,14 +451,68 @@ const TechJobsTab = ({ token, user }) => {
                     reason: newStatus === 'REJECTED' ? rejectionReason : undefined
                 })
             });
-            if (response.ok) {
-                fetchAssignedTickets();
-                setSelectedTicket(null);
+            const payload = await parseResponse(response);
+            if (!response.ok) {
+                throw new Error(payload?.message || "Failed to update status.");
             }
+            await fetchAssignedTickets();
+            await refreshSelectedTicket(selectedTicket.id);
+            toast.success(`Status changed to ${newStatus.replace('_', ' ')}.`);
         } catch (err) {
             console.error("Status update failed", err);
+            toast.error(err.message || "Status update failed.");
         } finally {
             setIsUpdatingStatus(false);
+        }
+    };
+
+    const handleRequestVerification = async () => {
+        // Explicit verification request flow: move to ON_HOLD + add tagged comment.
+        if (!selectedTicket?.id || !token) return;
+        const trimmed = newComment.trim();
+
+        setIsPostingComment(true);
+        try {
+            const statusResponse = await fetch(`/api/v1/tickets/${selectedTicket.id}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    status: 'ON_HOLD',
+                    reason: trimmed || 'Technician requested verification from admin.'
+                })
+            });
+            const statusPayload = await parseResponse(statusResponse);
+            if (!statusResponse.ok) {
+                throw new Error(statusPayload?.message || "Failed to request verification.");
+            }
+
+            const commentResponse = await fetch(`/api/v1/tickets/${selectedTicket.id}/comments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    content: `Technician verification request: ${trimmed || "Please verify the latest work update."}`
+                })
+            });
+            if (!commentResponse.ok) {
+                const commentPayload = await parseResponse(commentResponse);
+                throw new Error(commentPayload?.message || "Verification requested, but comment posting failed.");
+            }
+
+            setNewComment("");
+            await fetchAssignedTickets();
+            await refreshSelectedTicket(selectedTicket.id);
+            toast.success("Verification requested. Ticket moved to ON_HOLD.");
+        } catch (err) {
+            console.error("Verification request failed", err);
+            toast.error(err.message || "Unable to request verification.");
+        } finally {
+            setIsPostingComment(false);
         }
     };
 
@@ -409,7 +541,7 @@ const TechJobsTab = ({ token, user }) => {
                         </div>
                     ))
                 ) : tickets.length === 0 ? (
-                    <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-gray-200 shadow-inner">
+                    <div className="col-span-full py-20 text-center bg-white rounded-3xl border-2 border-dashed border-gray-200 shadow-inner">
                         <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
                             <svg className="w-10 h-10 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                         </div>
@@ -417,8 +549,8 @@ const TechJobsTab = ({ token, user }) => {
                         <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-widest">Enjoy the break, technician!</p>
                     </div>
                 ) : tickets.map((ticket) => (
-                    <div key={ticket.id} className="group bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-xl shadow-gray-200/40 hover:shadow-emerald-200/50 hover:border-emerald-200 transition-all duration-500 relative overflow-hidden flex flex-col">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div key={ticket.id} className="group bg-white rounded-3xl p-7 border border-gray-200 shadow-lg shadow-gray-200/50 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-green-200/40 hover:border-green-200 transition-all duration-300 relative overflow-hidden flex flex-col">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                         <div className="flex justify-between items-start mb-6 relative z-10">
                             <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] border ${ticket.priority === 'CRITICAL' ? 'bg-red-50 text-red-600 border-red-100' :
@@ -429,28 +561,29 @@ const TechJobsTab = ({ token, user }) => {
                             </span>
                             <span className={`text-[10px] font-black px-3 py-1 rounded-lg border uppercase tracking-widest ${ticket.status === 'RESOLVED' ? 'bg-green-50 text-green-700 border-green-100' :
                                     ticket.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
-                                        ticket.status === 'IN_PROGRESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                        ticket.status === 'ON_HOLD' ? 'bg-violet-50 text-violet-700 border-violet-100' :
+                                            ticket.status === 'IN_PROGRESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                                             'bg-gray-50 text-gray-700 border-gray-100'
                                 }`}>
                                 {ticket.status}
                             </span>
                         </div>
 
-                        <h3 className="text-xl font-black text-gray-900 group-hover:text-emerald-700 transition-colors mb-2 line-clamp-2 uppercase tracking-tight relative z-10 leading-tight">{ticket.title}</h3>
+                        <h3 className="text-xl font-extrabold text-gray-900 group-hover:text-green-800 transition-colors mb-2 line-clamp-2 tracking-tight relative z-10 leading-tight">{ticket.title}</h3>
 
                         <div className="flex items-center gap-2 text-xs font-bold text-gray-400 mb-8 relative z-10">
                             <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             <span className="truncate uppercase tracking-wider">{ticket.location}</span>
                         </div>
 
-                        <div className="mt-auto pt-6 border-t border-gray-50 flex items-center justify-between relative z-10">
+                        <div className="mt-auto pt-6 border-t border-gray-100 flex items-center justify-between relative z-10">
                             <div>
                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Origin</p>
                                 <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{ticket.reporterName}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedTicket(ticket)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 rounded-2xl shadow-xl shadow-emerald-200 transition-all transform hover:scale-110 active:scale-95 group/btn"
+                                className="bg-green-800 hover:bg-green-900 text-white p-3.5 rounded-2xl shadow-lg shadow-green-200 transition-all transform hover:scale-105 active:scale-95 group/btn"
                             >
                                 <svg className="w-6 h-6 group-hover/btn:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
@@ -517,7 +650,7 @@ const TechJobsTab = ({ token, user }) => {
                                             <h4 className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.2em]">Operational Controls</h4>
 
                                             <div className="space-y-4">
-                                                {selectedTicket.status === 'OPEN' && (
+                                                {activeStatus === 'OPEN' && (
                                                     <div className="space-y-3">
                                                         <button
                                                             onClick={() => handleUpdateStatus('IN_PROGRESS')}
@@ -537,7 +670,7 @@ const TechJobsTab = ({ token, user }) => {
                                                     </div>
                                                 )}
 
-                                                {selectedTicket.status === 'IN_PROGRESS' && (
+                                                {activeStatus === 'IN_PROGRESS' && (
                                                     <div className="space-y-4">
                                                         {!showResolutionBox ? (
                                                             <div className="space-y-3">
@@ -552,6 +685,13 @@ const TechJobsTab = ({ token, user }) => {
                                                                     className="w-full bg-red-500/90 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-red-500 transition-all transform active:scale-95"
                                                                 >
                                                                     Reject Assignment
+                                                                </button>
+                                                                <button
+                                                                    onClick={handleRequestVerification}
+                                                                    disabled={isPostingComment || isUpdatingStatus}
+                                                                    className="w-full bg-violet-500 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-violet-600 disabled:opacity-50 transition-all transform active:scale-95"
+                                                                >
+                                                                    {isPostingComment ? "Requesting..." : "Request Verification"}
                                                                 </button>
                                                             </div>
                                                         ) : (
@@ -586,7 +726,7 @@ const TechJobsTab = ({ token, user }) => {
                                                     </div>
                                                 )}
 
-                                                {showRejectBox && selectedTicket.status !== 'REJECTED' && (
+                                                {showRejectBox && activeStatus !== 'REJECTED' && (
                                                     <div className="space-y-4 animate-in slide-in-from-top-4 duration-500">
                                                         <div>
                                                             <label className="block text-[10px] font-black text-red-200 uppercase tracking-widest mb-1.5 ml-1">Rejection Reason</label>
@@ -616,17 +756,24 @@ const TechJobsTab = ({ token, user }) => {
                                                     </div>
                                                 )}
 
-                                                {selectedTicket.status === 'RESOLVED' && (
+                                                {activeStatus === 'RESOLVED' && (
                                                     <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-inner">
                                                         <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest mb-2">Completion Note</p>
                                                         <p className="text-sm font-bold leading-relaxed">{fullTicketDetails?.resolutionNotes || 'Operational success.'}</p>
                                                     </div>
                                                 )}
 
-                                                {selectedTicket.status === 'REJECTED' && (
+                                                {activeStatus === 'REJECTED' && (
                                                     <div className="bg-red-500/20 backdrop-blur-md border border-red-300/30 rounded-2xl p-5 shadow-inner">
                                                         <p className="text-[10px] font-black text-red-200 uppercase tracking-widest mb-2">Rejection Reason Submitted</p>
                                                         <p className="text-sm font-bold leading-relaxed text-white">{fullTicketDetails?.rejectionReason || rejectionReason || 'No rejection reason provided.'}</p>
+                                                    </div>
+                                                )}
+
+                                                {activeStatus === 'ON_HOLD' && (
+                                                    <div className="bg-violet-500/20 backdrop-blur-md border border-violet-300/30 rounded-2xl p-5 shadow-inner">
+                                                        <p className="text-[10px] font-black text-violet-200 uppercase tracking-widest mb-2">Awaiting Admin Verification</p>
+                                                        <p className="text-sm font-bold leading-relaxed text-white">Your latest verification request has moved this ticket to ON_HOLD. It will return to IN_PROGRESS after admin replies.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -647,6 +794,45 @@ const TechJobsTab = ({ token, user }) => {
                                         </div>
                                         <div className="bg-white border border-gray-100 rounded-4xl p-8 shadow-sm">
                                             <TicketTimeline ticket={fullTicketDetails || selectedTicket} comments={ticketComments} />
+
+                                            {(activeStatus === 'IN_PROGRESS' || activeStatus === 'ON_HOLD') && (
+                                                <div className="mt-6 pt-6 border-t border-gray-100">
+                                                    <label htmlFor="tech-comment" className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">
+                                                        Add Update / Reply to Admin
+                                                    </label>
+                                                    <textarea
+                                                        id="tech-comment"
+                                                        rows={3}
+                                                        value={newComment}
+                                                        onChange={(e) => setNewComment(e.target.value)}
+                                                        placeholder="Share progress, ask a question, or respond to the admin..."
+                                                        disabled={isPostingComment}
+                                                        className="w-full rounded-2xl border border-gray-200 bg-white text-sm text-gray-800 p-3 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none resize-none transition disabled:opacity-60"
+                                                    />
+                                                    <div className="mt-2 flex justify-end">
+                                                        <div className="flex gap-2">
+                                                            {activeStatus === 'IN_PROGRESS' && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleRequestVerification}
+                                                                    disabled={isPostingComment || isUpdatingStatus}
+                                                                    className="bg-violet-600 text-white font-black text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-xl hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                                                >
+                                                                    {isPostingComment ? "Requesting..." : "Request Verification"}
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={handlePostComment}
+                                                                disabled={isPostingComment || !newComment.trim()}
+                                                                className="bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                                            >
+                                                                {isPostingComment ? "Posting..." : "Post Comment"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {Array.isArray(fullTicketDetails?.attachments) && fullTicketDetails.attachments.length > 0 && (
@@ -704,6 +890,7 @@ const TechnicianDashboard = () => {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     useEffect(() => {
+        // Build lightweight user profile from JWT/local storage context.
         if (token) {
             try {
                 const payload = JSON.parse(atob(token.split('.')[1]));
@@ -724,6 +911,7 @@ const TechnicianDashboard = () => {
     }, [token, currentUsername]);
 
     useEffect(() => {
+        // Compute personal KPI cards from current technician assignments.
         if (token && user?.id && uuidPattern.test(String(user.id))) {
             const fetchPersonalStats = async () => {
                 try {
@@ -749,7 +937,7 @@ const TechnicianDashboard = () => {
     }, [token, user?.id, uuidPattern]);
 
     return (
-        <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+        <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-transparent min-h-screen">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 relative transition-all duration-300">
             
             {/* Sidebar Overlay for mobile */}
@@ -797,7 +985,7 @@ const TechnicianDashboard = () => {
                         <Icon className="h-4 w-4" />
                         {link.label}
                       </span>
-                      <ChevronRight className={`h-4 w-4 ${isActive ? 'text-emerald-500' : 'opacity-40'}`} />
+                      {isSidebarOpen && <ChevronRight className={`h-4 w-4 ${isActive ? 'text-emerald-500' : 'opacity-40'}`} />}
                     </button>
                   );
                 })}

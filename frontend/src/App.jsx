@@ -11,11 +11,15 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import UserDashboard from "./pages/user/UserDashboard";
 import ReportAnIssue from "./pages/ReportAnIssue";
+import Resources from './pages/Resources';
+import BookingPage from "./pages/Booking/BookingPage";
+import MyBookings from "./pages/Booking/MyBookings";
+import MyBookingsCalendar from "./pages/Booking/MyBookingsCalendar";
 
 const AppLayout = ({ children }) => (
-  <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+  <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
     <Navbar />
-    <div className="grow">{children}</div>
+    <div className="grow bg-white">{children}</div>
     <Footer />
   </div>
 );
@@ -27,15 +31,24 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<AppLayout><Home /></AppLayout>} />
+        <Route path="/resources" element={<AppLayout><Resources /></AppLayout>} />
         <Route path="/admin/dashboard" element={<AppLayout><AdminDashboard /></AppLayout>} />
+        <Route path="/admin/tickets" element={<AppLayout><AdminDashboard /></AppLayout>} />
+        <Route path="/admin/bookings" element={<AppLayout><AdminDashboard /></AppLayout>} />
         <Route path="/technician/dashboard" element={<AppLayout><TechnicianDashboard /></AppLayout>} />
         <Route path="/user/dashboard" element={<AppLayout><UserDashboard /></AppLayout>} />
         <Route path="/admin/facilities" element={<AppLayout><AdminPage /></AppLayout>} />
-        <Route path="/admin/bookings" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/report-an-issue" element={<AppLayout><ReportAnIssue /></AppLayout>} />
 
         <Route path="/login" element={<AppLayout><Login /></AppLayout>} />
         <Route path="/register" element={<AppLayout><Register /></AppLayout>} />
+
+      // Booking routes
+      <Route path="/book/:id" element={<AppLayout><BookingPage /></AppLayout>} />
+      <Route path="/bookings" element={<AppLayout><MyBookings hideLayout={true} /></AppLayout>} />
+      <Route path="/bookings-calendar" element={<AppLayout><MyBookingsCalendar /></AppLayout>} />
+
+
       </Routes>
     </>
   );

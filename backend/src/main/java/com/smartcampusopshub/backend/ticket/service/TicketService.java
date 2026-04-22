@@ -3,11 +3,13 @@ package com.smartcampusopshub.backend.ticket.service;
 import com.smartcampusopshub.backend.auth.model.User;
 import com.smartcampusopshub.backend.auth.model.Role;
 import com.smartcampusopshub.backend.auth.repository.UserRepository;
+import com.smartcampusopshub.backend.common.exception.AccessDeniedException;
 import com.smartcampusopshub.backend.common.exception.BadRequestException;
 import com.smartcampusopshub.backend.common.exception.ResourceNotFoundException;
 import com.smartcampusopshub.backend.ticket.dto.AssignTicketRequestDto;
 import com.smartcampusopshub.backend.ticket.dto.AddTicketCommentRequestDto;
 import com.smartcampusopshub.backend.ticket.dto.CreateTicketRequestDto;
+import com.smartcampusopshub.backend.ticket.dto.UpdateTicketRequestDto;
 import com.smartcampusopshub.backend.ticket.dto.UpdateTicketStatusRequestDto;
 import com.smartcampusopshub.backend.ticket.dto.TicketCommentResponseDto;
 import com.smartcampusopshub.backend.ticket.dto.TicketResponseDto;
@@ -31,7 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -120,12 +124,23 @@ public class TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
         User actor = getActor(actorUsername);
 
+        TicketStatus previous = ticket.getStatus();
         TicketStatus next = request.getStatus();
         ticket.setStatus(next);
 
-        if (next == TicketStatus.IN_PROGRESS && ticket.getFirstResponseAt() == null) {
-            ticket.setFirstResponseAt(LocalDateTime.now());
-            addCommentInternal(ticket, actor, "Technician started assessment.");
+        if (next == TicketStatus.IN_PROGRESS) {
+            if (ticket.getFirstResponseAt() == null) {
+                ticket.setFirstResponseAt(LocalDateTime.now());
+                addCommentInternal(ticket, actor, "Technician started assessment.");
+            }
+            if (previous == TicketStatus.RESOLVED) {
+                ticket.setResolvedAt(null);
+                ticket.setResolutionNotes(null);
+                String note = StringUtils.hasText(request.getReason())
+                        ? request.getReason().trim()
+                        : "Admin reopened the ticket — additional work required.";
+                addCommentInternal(ticket, actor, "Reopened: " + note);
+            }
         }
 
         if (next == TicketStatus.RESOLVED) {
@@ -143,6 +158,16 @@ public class TicketService {
             ticket.setRejectionReason(request.getReason().trim());
             ticket.setResolvedAt(null);
             addCommentInternal(ticket, actor, "Rejected: " + request.getReason().trim());
+        } else if (next == TicketStatus.ON_HOLD) {
+            String note = StringUtils.hasText(request.getReason())
+                    ? request.getReason().trim()
+                    : "Technician requested verification from admin.";
+            addCommentInternal(ticket, actor, "On hold: " + note);
+        } else if (next == TicketStatus.CLOSED) {
+            String note = StringUtils.hasText(request.getResolutionNotes())
+                    ? request.getResolutionNotes().trim()
+                    : "Ticket closed by admin after resolution.";
+            addCommentInternal(ticket, actor, "Closed: " + note);
         }
 
         Ticket saved = ticketRepository.save(ticket);
@@ -154,7 +179,21 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
         User actor = getActor(actorUsername);
-        TicketComment saved = addCommentInternal(ticket, actor, request.getContent().trim());
+        String trimmedContent = request.getContent().trim();
+        TicketComment saved = addCommentInternal(ticket, actor, trimmedContent);
+
+        if (actor.getRole() == Role.TECHNICIAN
+                && ticket.getStatus() == TicketStatus.IN_PROGRESS
+                && isExplicitVerificationRequest(trimmedContent)) {
+            ticket.setStatus(TicketStatus.ON_HOLD);
+            addCommentInternal(ticket, actor, "Ticket moved to ON_HOLD pending admin verification.");
+        } else if (actor.getRole() == Role.ADMIN && ticket.getStatus() == TicketStatus.ON_HOLD) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+            addCommentInternal(ticket, actor, "Admin replied. Ticket moved back to IN_PROGRESS.");
+        }
+
+        ticketRepository.save(ticket);
+
         return TicketCommentResponseDto.builder()
                 .id(saved.getId())
                 .authorId(actor.getId())
@@ -182,9 +221,8 @@ public class TicketService {
     }
 
     @Transactional
-    public TicketResponseDto createTicket(CreateTicketRequestDto request, List<MultipartFile> attachments) {
-        User reporter = userRepository.findByEmail(request.getReporterEmail())
-                .orElseThrow(() -> new BadRequestException("Reporter user not found for email: " + request.getReporterEmail()));
+    public TicketResponseDto createTicket(CreateTicketRequestDto request, List<MultipartFile> attachments, String actorUsername) {
+        User reporter = getActor(actorUsername);
 
         Ticket ticket = Ticket.builder()
                 .title(request.getTitle())
@@ -219,6 +257,65 @@ public class TicketService {
         return TicketMapper.toResponseDto(savedTicket);
     }
 
+    @Transactional
+    public TicketResponseDto updateTicket(UUID ticketId, UpdateTicketRequestDto request, String actorUsername) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
+        User actor = getActor(actorUsername);
+
+        authorizeReporterMutation(ticket, actor, "edit");
+
+        ticket.setTitle(request.getTitle().trim());
+        ticket.setDescription(request.getDescription().trim());
+        ticket.setCategory(request.getCategory());
+        ticket.setPriority(request.getPriority());
+        ticket.setLocation(request.getLocation().trim());
+        ticket.setContactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null);
+        ticket.setContactEmail(StringUtils.hasText(request.getContactEmail())
+                ? request.getContactEmail().trim()
+                : ticket.getReporter() != null ? ticket.getReporter().getEmail() : null);
+
+        addCommentInternal(ticket, actor, "Ticket details edited by reporter.");
+
+        Ticket saved = ticketRepository.save(ticket);
+        return TicketMapper.toResponseDto(saved);
+    }
+
+    @Transactional
+    public void deleteTicket(UUID ticketId, String actorUsername) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
+        User actor = getActor(actorUsername);
+
+        authorizeReporterMutation(ticket, actor, "delete");
+
+        if (ticket.getAttachments() != null) {
+            for (TicketAttachment attachment : ticket.getAttachments()) {
+                try {
+                    if (StringUtils.hasText(attachment.getFilePath())) {
+                        Files.deleteIfExists(Path.of(attachment.getFilePath()));
+                    }
+                } catch (IOException ignored) {
+                    // Best-effort cleanup: leave orphan files rather than aborting the delete.
+                }
+            }
+        }
+
+        ticketRepository.delete(ticket);
+    }
+
+    private void authorizeReporterMutation(Ticket ticket, User actor, String action) {
+        boolean isReporter = ticket.getReporter() != null && actor.getId().equals(ticket.getReporter().getId());
+        boolean isAdmin = actor.getRole() == Role.ADMIN;
+        if (!isReporter && !isAdmin) {
+            throw new AccessDeniedException("Only the reporter can " + action + " this ticket.");
+        }
+        if (ticket.getStatus() != TicketStatus.OPEN) {
+            throw new BadRequestException(
+                    "Ticket can only be " + ("delete".equals(action) ? "deleted" : "edited") + " while it is OPEN.");
+        }
+    }
+
     private User getActor(String actorUsername) {
         if (!StringUtils.hasText(actorUsername)) {
             throw new BadRequestException("Unable to identify authenticated user");
@@ -240,9 +337,19 @@ public class TicketService {
         String value = content == null ? "" : content.toLowerCase();
         if (value.startsWith("rejected:")) return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.REJECTION;
         if (value.startsWith("resolved:")) return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.RESOLUTION;
-        if (value.contains("reassigned") || value.contains("started assessment")) {
+        if (value.contains("reassigned")
+                || value.contains("started assessment")
+                || value.contains("moved to on_hold")
+                || value.contains("moved back to in_progress")) {
             return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.STATUS_CHANGE;
         }
         return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.NOTE;
+    }
+
+    private boolean isExplicitVerificationRequest(String content) {
+        if (!StringUtils.hasText(content)) {
+            return false;
+        }
+        return content.trim().toLowerCase().startsWith("technician verification request:");
     }
 }
