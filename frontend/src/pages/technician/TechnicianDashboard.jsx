@@ -8,9 +8,11 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 
 const parseResponse = async (response) => {
+    // Normalize API responses for shared error/success handling.
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
         return response.json();
@@ -20,6 +22,7 @@ const parseResponse = async (response) => {
 };
 
 const openAttachmentWithAuth = async (downloadUrl, token, fileName) => {
+    // Open protected attachments in a new tab with bearer auth.
     if (!downloadUrl || !token) {
         throw new Error("Missing attachment URL or authentication token.");
     }
@@ -156,7 +159,7 @@ const TicketTimeline = ({ ticket, comments }) => {
         });
     }
 
-    // Sort events chronologically
+    // Sort events chronologically so timeline always renders in natural order.
     events.sort((a, b) => a.date - b.date);
 
     const getColorClasses = (color) => {
@@ -289,7 +292,11 @@ const TechJobsTab = ({ token, user }) => {
     const [newComment, setNewComment] = useState("");
     const [isPostingComment, setIsPostingComment] = useState(false);
 
+    const activeTicket = fullTicketDetails || selectedTicket;
+    const activeStatus = activeTicket?.status;
+
     const fetchAssignedTickets = async () => {
+        // Fetch tickets assigned to the logged-in technician.
         try {
             setLoading(true);
             const response = await fetch(`/api/v1/tickets?assigneeId=${user.id}&size=50`, {
@@ -353,6 +360,7 @@ const TechJobsTab = ({ token, user }) => {
     }, [selectedTicket, token]);
 
     const refreshComments = async (ticketId) => {
+        // Refresh only comments when posting replies/updates.
         if (!ticketId || !token) return;
         try {
             const commentsRes = await fetch(`/api/v1/tickets/${ticketId}/comments`, {
@@ -367,7 +375,28 @@ const TechJobsTab = ({ token, user }) => {
         }
     };
 
+    const refreshSelectedTicket = async (ticketId) => {
+        // Rehydrate selected ticket details after status/comment actions.
+        if (!ticketId || !token) return;
+        try {
+            const res = await fetch(`/api/v1/tickets/${ticketId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const payload = await parseResponse(res);
+            if (res.ok && payload?.success) {
+                setFullTicketDetails(payload.data);
+                setSelectedTicket((prev) => prev ? { ...prev, ...payload.data } : prev);
+                setResolutionNotes(payload.data.resolutionNotes || '');
+                setRejectionReason(payload.data.rejectionReason || '');
+            }
+            await refreshComments(ticketId);
+        } catch (err) {
+            console.error("Ticket refresh failed", err);
+        }
+    };
+
     const handlePostComment = async () => {
+        // Post a regular technician progress/update comment.
         const trimmed = newComment.trim();
         if (!trimmed) return;
         if (!selectedTicket?.id || !token) return;
@@ -387,15 +416,18 @@ const TechJobsTab = ({ token, user }) => {
                 throw new Error(payload?.message || "Failed to post comment.");
             }
             setNewComment("");
-            await refreshComments(selectedTicket.id);
+            await refreshSelectedTicket(selectedTicket.id);
+            toast.success("Comment posted.");
         } catch (err) {
             console.error("Post comment failed", err);
+            toast.error(err.message || "Failed to post comment.");
         } finally {
             setIsPostingComment(false);
         }
     };
 
     const handleUpdateStatus = async (newStatus) => {
+        // Generic status transition handler with required-note validations.
         if (newStatus === 'RESOLVED' && !resolutionNotes.trim()) {
             alert("Please provide resolution notes before completing the job.");
             return;
@@ -419,14 +451,68 @@ const TechJobsTab = ({ token, user }) => {
                     reason: newStatus === 'REJECTED' ? rejectionReason : undefined
                 })
             });
-            if (response.ok) {
-                fetchAssignedTickets();
-                setSelectedTicket(null);
+            const payload = await parseResponse(response);
+            if (!response.ok) {
+                throw new Error(payload?.message || "Failed to update status.");
             }
+            await fetchAssignedTickets();
+            await refreshSelectedTicket(selectedTicket.id);
+            toast.success(`Status changed to ${newStatus.replace('_', ' ')}.`);
         } catch (err) {
             console.error("Status update failed", err);
+            toast.error(err.message || "Status update failed.");
         } finally {
             setIsUpdatingStatus(false);
+        }
+    };
+
+    const handleRequestVerification = async () => {
+        // Explicit verification request flow: move to ON_HOLD + add tagged comment.
+        if (!selectedTicket?.id || !token) return;
+        const trimmed = newComment.trim();
+
+        setIsPostingComment(true);
+        try {
+            const statusResponse = await fetch(`/api/v1/tickets/${selectedTicket.id}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    status: 'ON_HOLD',
+                    reason: trimmed || 'Technician requested verification from admin.'
+                })
+            });
+            const statusPayload = await parseResponse(statusResponse);
+            if (!statusResponse.ok) {
+                throw new Error(statusPayload?.message || "Failed to request verification.");
+            }
+
+            const commentResponse = await fetch(`/api/v1/tickets/${selectedTicket.id}/comments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    content: `Technician verification request: ${trimmed || "Please verify the latest work update."}`
+                })
+            });
+            if (!commentResponse.ok) {
+                const commentPayload = await parseResponse(commentResponse);
+                throw new Error(commentPayload?.message || "Verification requested, but comment posting failed.");
+            }
+
+            setNewComment("");
+            await fetchAssignedTickets();
+            await refreshSelectedTicket(selectedTicket.id);
+            toast.success("Verification requested. Ticket moved to ON_HOLD.");
+        } catch (err) {
+            console.error("Verification request failed", err);
+            toast.error(err.message || "Unable to request verification.");
+        } finally {
+            setIsPostingComment(false);
         }
     };
 
@@ -475,7 +561,8 @@ const TechJobsTab = ({ token, user }) => {
                             </span>
                             <span className={`text-[10px] font-black px-3 py-1 rounded-lg border uppercase tracking-widest ${ticket.status === 'RESOLVED' ? 'bg-green-50 text-green-700 border-green-100' :
                                     ticket.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
-                                        ticket.status === 'IN_PROGRESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                        ticket.status === 'ON_HOLD' ? 'bg-violet-50 text-violet-700 border-violet-100' :
+                                            ticket.status === 'IN_PROGRESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                                             'bg-gray-50 text-gray-700 border-gray-100'
                                 }`}>
                                 {ticket.status}
@@ -563,7 +650,7 @@ const TechJobsTab = ({ token, user }) => {
                                             <h4 className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.2em]">Operational Controls</h4>
 
                                             <div className="space-y-4">
-                                                {selectedTicket.status === 'OPEN' && (
+                                                {activeStatus === 'OPEN' && (
                                                     <div className="space-y-3">
                                                         <button
                                                             onClick={() => handleUpdateStatus('IN_PROGRESS')}
@@ -583,7 +670,7 @@ const TechJobsTab = ({ token, user }) => {
                                                     </div>
                                                 )}
 
-                                                {selectedTicket.status === 'IN_PROGRESS' && (
+                                                {activeStatus === 'IN_PROGRESS' && (
                                                     <div className="space-y-4">
                                                         {!showResolutionBox ? (
                                                             <div className="space-y-3">
@@ -598,6 +685,13 @@ const TechJobsTab = ({ token, user }) => {
                                                                     className="w-full bg-red-500/90 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-red-500 transition-all transform active:scale-95"
                                                                 >
                                                                     Reject Assignment
+                                                                </button>
+                                                                <button
+                                                                    onClick={handleRequestVerification}
+                                                                    disabled={isPostingComment || isUpdatingStatus}
+                                                                    className="w-full bg-violet-500 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl hover:bg-violet-600 disabled:opacity-50 transition-all transform active:scale-95"
+                                                                >
+                                                                    {isPostingComment ? "Requesting..." : "Request Verification"}
                                                                 </button>
                                                             </div>
                                                         ) : (
@@ -632,7 +726,7 @@ const TechJobsTab = ({ token, user }) => {
                                                     </div>
                                                 )}
 
-                                                {showRejectBox && selectedTicket.status !== 'REJECTED' && (
+                                                {showRejectBox && activeStatus !== 'REJECTED' && (
                                                     <div className="space-y-4 animate-in slide-in-from-top-4 duration-500">
                                                         <div>
                                                             <label className="block text-[10px] font-black text-red-200 uppercase tracking-widest mb-1.5 ml-1">Rejection Reason</label>
@@ -662,17 +756,24 @@ const TechJobsTab = ({ token, user }) => {
                                                     </div>
                                                 )}
 
-                                                {selectedTicket.status === 'RESOLVED' && (
+                                                {activeStatus === 'RESOLVED' && (
                                                     <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-inner">
                                                         <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest mb-2">Completion Note</p>
                                                         <p className="text-sm font-bold leading-relaxed">{fullTicketDetails?.resolutionNotes || 'Operational success.'}</p>
                                                     </div>
                                                 )}
 
-                                                {selectedTicket.status === 'REJECTED' && (
+                                                {activeStatus === 'REJECTED' && (
                                                     <div className="bg-red-500/20 backdrop-blur-md border border-red-300/30 rounded-2xl p-5 shadow-inner">
                                                         <p className="text-[10px] font-black text-red-200 uppercase tracking-widest mb-2">Rejection Reason Submitted</p>
                                                         <p className="text-sm font-bold leading-relaxed text-white">{fullTicketDetails?.rejectionReason || rejectionReason || 'No rejection reason provided.'}</p>
+                                                    </div>
+                                                )}
+
+                                                {activeStatus === 'ON_HOLD' && (
+                                                    <div className="bg-violet-500/20 backdrop-blur-md border border-violet-300/30 rounded-2xl p-5 shadow-inner">
+                                                        <p className="text-[10px] font-black text-violet-200 uppercase tracking-widest mb-2">Awaiting Admin Verification</p>
+                                                        <p className="text-sm font-bold leading-relaxed text-white">Your latest verification request has moved this ticket to ON_HOLD. It will return to IN_PROGRESS after admin replies.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -694,7 +795,7 @@ const TechJobsTab = ({ token, user }) => {
                                         <div className="bg-white border border-gray-100 rounded-4xl p-8 shadow-sm">
                                             <TicketTimeline ticket={fullTicketDetails || selectedTicket} comments={ticketComments} />
 
-                                            {selectedTicket.status === 'IN_PROGRESS' && (
+                                            {(activeStatus === 'IN_PROGRESS' || activeStatus === 'ON_HOLD') && (
                                                 <div className="mt-6 pt-6 border-t border-gray-100">
                                                     <label htmlFor="tech-comment" className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">
                                                         Add Update / Reply to Admin
@@ -709,14 +810,26 @@ const TechJobsTab = ({ token, user }) => {
                                                         className="w-full rounded-2xl border border-gray-200 bg-white text-sm text-gray-800 p-3 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none resize-none transition disabled:opacity-60"
                                                     />
                                                     <div className="mt-2 flex justify-end">
-                                                        <button
-                                                            type="button"
-                                                            onClick={handlePostComment}
-                                                            disabled={isPostingComment || !newComment.trim()}
-                                                            className="bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
-                                                        >
-                                                            {isPostingComment ? "Posting..." : "Post Comment"}
-                                                        </button>
+                                                        <div className="flex gap-2">
+                                                            {activeStatus === 'IN_PROGRESS' && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleRequestVerification}
+                                                                    disabled={isPostingComment || isUpdatingStatus}
+                                                                    className="bg-violet-600 text-white font-black text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-xl hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                                                >
+                                                                    {isPostingComment ? "Requesting..." : "Request Verification"}
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={handlePostComment}
+                                                                disabled={isPostingComment || !newComment.trim()}
+                                                                className="bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                                            >
+                                                                {isPostingComment ? "Posting..." : "Post Comment"}
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
@@ -777,6 +890,7 @@ const TechnicianDashboard = () => {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     useEffect(() => {
+        // Build lightweight user profile from JWT/local storage context.
         if (token) {
             try {
                 const payload = JSON.parse(atob(token.split('.')[1]));
@@ -797,6 +911,7 @@ const TechnicianDashboard = () => {
     }, [token, currentUsername]);
 
     useEffect(() => {
+        // Compute personal KPI cards from current technician assignments.
         if (token && user?.id && uuidPattern.test(String(user.id))) {
             const fetchPersonalStats = async () => {
                 try {

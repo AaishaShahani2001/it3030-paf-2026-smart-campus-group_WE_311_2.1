@@ -158,6 +158,11 @@ public class TicketService {
             ticket.setRejectionReason(request.getReason().trim());
             ticket.setResolvedAt(null);
             addCommentInternal(ticket, actor, "Rejected: " + request.getReason().trim());
+        } else if (next == TicketStatus.ON_HOLD) {
+            String note = StringUtils.hasText(request.getReason())
+                    ? request.getReason().trim()
+                    : "Technician requested verification from admin.";
+            addCommentInternal(ticket, actor, "On hold: " + note);
         } else if (next == TicketStatus.CLOSED) {
             String note = StringUtils.hasText(request.getResolutionNotes())
                     ? request.getResolutionNotes().trim()
@@ -174,7 +179,21 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
         User actor = getActor(actorUsername);
-        TicketComment saved = addCommentInternal(ticket, actor, request.getContent().trim());
+        String trimmedContent = request.getContent().trim();
+        TicketComment saved = addCommentInternal(ticket, actor, trimmedContent);
+
+        if (actor.getRole() == Role.TECHNICIAN
+                && ticket.getStatus() == TicketStatus.IN_PROGRESS
+                && isExplicitVerificationRequest(trimmedContent)) {
+            ticket.setStatus(TicketStatus.ON_HOLD);
+            addCommentInternal(ticket, actor, "Ticket moved to ON_HOLD pending admin verification.");
+        } else if (actor.getRole() == Role.ADMIN && ticket.getStatus() == TicketStatus.ON_HOLD) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+            addCommentInternal(ticket, actor, "Admin replied. Ticket moved back to IN_PROGRESS.");
+        }
+
+        ticketRepository.save(ticket);
+
         return TicketCommentResponseDto.builder()
                 .id(saved.getId())
                 .authorId(actor.getId())
@@ -202,9 +221,8 @@ public class TicketService {
     }
 
     @Transactional
-    public TicketResponseDto createTicket(CreateTicketRequestDto request, List<MultipartFile> attachments) {
-        User reporter = userRepository.findByEmail(request.getReporterEmail())
-                .orElseThrow(() -> new BadRequestException("Reporter user not found for email: " + request.getReporterEmail()));
+    public TicketResponseDto createTicket(CreateTicketRequestDto request, List<MultipartFile> attachments, String actorUsername) {
+        User reporter = getActor(actorUsername);
 
         Ticket ticket = Ticket.builder()
                 .title(request.getTitle())
@@ -319,9 +337,19 @@ public class TicketService {
         String value = content == null ? "" : content.toLowerCase();
         if (value.startsWith("rejected:")) return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.REJECTION;
         if (value.startsWith("resolved:")) return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.RESOLUTION;
-        if (value.contains("reassigned") || value.contains("started assessment")) {
+        if (value.contains("reassigned")
+                || value.contains("started assessment")
+                || value.contains("moved to on_hold")
+                || value.contains("moved back to in_progress")) {
             return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.STATUS_CHANGE;
         }
         return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.NOTE;
+    }
+
+    private boolean isExplicitVerificationRequest(String content) {
+        if (!StringUtils.hasText(content)) {
+            return false;
+        }
+        return content.trim().toLowerCase().startsWith("technician verification request:");
     }
 }

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 const decodeJwtPayload = (token) => {
+  // Safely decode JWT payload for deriving current user identity.
   try {
     const payload = token.split(".")[1];
     if (!payload) return null;
@@ -46,6 +47,7 @@ const getAuthUserId = (token) => {
 };
 
 const getReporterEmailFromAuthState = () => {
+  // Resolve reporter email from multiple storage conventions used across auth flows.
   const directKeys = ["reporterEmail", "userEmail", "email"];
   for (const key of directKeys) {
     const value = localStorage.getItem(key);
@@ -77,6 +79,7 @@ const getReporterEmailFromAuthState = () => {
 };
 
 const parseResponse = async (response) => {
+  // Normalize API responses so callers can handle JSON and plain text uniformly.
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     return response.json();
@@ -88,6 +91,7 @@ const parseResponse = async (response) => {
 const STATUS_META = {
   OPEN: { label: "Open", chip: "bg-amber-50 text-amber-700 ring-amber-200", dot: "bg-amber-500" },
   IN_PROGRESS: { label: "In Progress", chip: "bg-blue-50 text-blue-700 ring-blue-200", dot: "bg-blue-500" },
+  ON_HOLD: { label: "On Hold", chip: "bg-violet-50 text-violet-700 ring-violet-200", dot: "bg-violet-500" },
   RESOLVED: { label: "Resolved", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
   CLOSED: { label: "Closed", chip: "bg-gray-100 text-gray-700 ring-gray-200", dot: "bg-gray-400" },
   REJECTED: { label: "Rejected", chip: "bg-rose-50 text-rose-700 ring-rose-200", dot: "bg-rose-500" },
@@ -142,6 +146,7 @@ const AllTickets = () => {
   const authUserId = getAuthUserId(token);
 
   const fetchTickets = useCallback(async (opts = {}) => {
+    // Load current user's tickets and apply an extra client-side ownership guard.
     const silent = Boolean(opts.silent);
     if (!token) {
       setLoading(false);
@@ -201,6 +206,7 @@ const AllTickets = () => {
   }, [fetchTickets]);
 
   const sortedTickets = useMemo(() => {
+    // Keep newest tickets first for consistent table and card ordering.
     return [...tickets].sort((a, b) => {
       const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -211,6 +217,7 @@ const AllTickets = () => {
   const canMutate = (ticket) => (ticket?.status || "OPEN") === "OPEN";
 
   const loadComments = useCallback(async (ticketId) => {
+    // Fetch full ticket discussion thread for the view modal.
     if (!ticketId || !token) return;
     try {
       setLoadingComments(true);
@@ -473,7 +480,7 @@ const AllTickets = () => {
                   return (
                     <tr key={t.id} className="group transition-colors hover:bg-emerald-50/30">
                       <td className="px-4 py-3 align-top">
-                        <div className="max-w-[300px]">
+                        <div className="max-w-75">
                           <p className="text-sm font-semibold text-gray-900 truncate">{t.title}</p>
                           <p className="mt-1 text-xs text-gray-500 line-clamp-2">{t.description}</p>
                           <p className="mt-1 text-[11px] text-gray-400">
@@ -489,7 +496,7 @@ const AllTickets = () => {
                       <td className="px-4 py-3 align-top">
                         <span className="inline-flex items-center gap-1.5 text-xs text-gray-700">
                           <MapPin className="h-3.5 w-3.5 text-emerald-600" />
-                          <span className="max-w-[170px] truncate">{t.location || "—"}</span>
+                          <span className="max-w-42.5 truncate">{t.location || "—"}</span>
                         </span>
                       </td>
                       <td className="px-4 py-3 align-top text-xs text-gray-600 whitespace-nowrap">
@@ -552,7 +559,7 @@ const AllTickets = () => {
       )}
 
       {viewTicket && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-start gap-4 bg-gray-50/60">
               <div className="min-w-0">
@@ -641,7 +648,7 @@ const AllTickets = () => {
                       }[event.tone] || "bg-gray-400 ring-gray-100";
                       return (
                         <li key={event.id} className="relative">
-                          <span className={`absolute -left-[22px] top-1.5 w-3 h-3 rounded-full ring-4 ${toneRing}`} />
+                          <span className={`absolute -left-5.5 top-1.5 w-3 h-3 rounded-full ring-4 ${toneRing}`} />
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-gray-900 truncate">{event.title}</p>
@@ -678,7 +685,7 @@ const AllTickets = () => {
       )}
 
       {editTicket && editForm && createPortal(
-        <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-105 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/60">
               <div>
@@ -799,7 +806,7 @@ const AllTickets = () => {
       )}
 
       {deleteTarget && createPortal(
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100">
             <div className="p-6 text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">

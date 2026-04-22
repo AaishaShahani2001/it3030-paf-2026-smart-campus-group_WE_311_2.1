@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 const TICKET_API_BASE = '/api/tickets';
 
 const decodeJwtPayload = (token) => {
+  // Decode JWT payload in browser without hard-failing on malformed tokens.
   try {
     const payload = token.split(".")[1];
     if (!payload) return null;
@@ -24,6 +25,7 @@ const decodeJwtPayload = (token) => {
 const looksLikeEmail = (value) => typeof value === "string" && value.includes("@");
 
 const getReporterEmailFromAuthState = () => {
+  // Prefer explicit email sources first, then fall back to token claims.
   const directKeys = ["reporterEmail", "userEmail", "email"];
   for (const key of directKeys) {
     const value = localStorage.getItem(key);
@@ -70,17 +72,19 @@ const ReportAnIssue = () => {
     location: "",
     contactPhone: "",
     contactEmail: "",
-    reporterEmail: "",
   });
 
   useEffect(() => {
+    // Ticket creation is auth-only; redirect unauthenticated users immediately.
     const reporterEmail = getReporterEmailFromAuthState();
-    if (reporterEmail) {
-      setTicketForm((prev) => ({ ...prev, reporterEmail }));
+    if (!reporterEmail) {
+      toast.error("Please login to create a ticket.");
+      navigate("/login");
     }
-  }, []);
+  }, [navigate]);
 
   const handleTicketFieldChange = (event) => {
+    // Enforce numeric phone input while preserving controlled-form behavior.
     const { name, value } = event.target;
     if (name === "contactPhone") {
       const numericPhone = value.replace(/\D/g, "").slice(0, 10);
@@ -91,6 +95,7 @@ const ReportAnIssue = () => {
   };
 
   const handleAttachmentChange = (event) => {
+    // Guard attachment count on client side before request submission.
     const selectedFiles = Array.from(event.target.files || []);
     if (selectedFiles.length > MAX_ATTACHMENTS) {
       toast.error(`You can upload a maximum of ${MAX_ATTACHMENTS} files.`);
@@ -101,12 +106,18 @@ const ReportAnIssue = () => {
   };
 
   const handleTicketSubmit = async (event) => {
+    // Submit multipart ticket payload with optional files and auth header.
     event.preventDefault();
     setTicketMessage("");
 
     setIsSubmittingTicket(true);
     try {
-      if (!ticketForm.reporterEmail) {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("You must be logged in to create a ticket.");
+      }
+      const reporterEmail = getReporterEmailFromAuthState();
+      if (!reporterEmail) {
         throw new Error("Could not detect logged-in user email. Please login again.");
       }
       if (ticketForm.contactPhone && !/^\d{10}$/.test(ticketForm.contactPhone)) {
@@ -129,7 +140,6 @@ const ReportAnIssue = () => {
               location: ticketForm.location,
               contactPhone: ticketForm.contactPhone || null,
               contactEmail: ticketForm.contactEmail || null,
-              reporterEmail: ticketForm.reporterEmail,
             }),
           ],
           { type: "application/json" }
@@ -142,6 +152,9 @@ const ReportAnIssue = () => {
 
       const response = await fetch(TICKET_API_BASE, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -159,7 +172,6 @@ const ReportAnIssue = () => {
       const successMessage = data?.message || "Request submitted successfully.";
       setTicketMessage(successMessage);
       toast.success(successMessage);
-      const reporterEmail = getReporterEmailFromAuthState();
       setTicketForm({
         title: "",
         description: "",
@@ -168,7 +180,6 @@ const ReportAnIssue = () => {
         location: "",
         contactPhone: "",
         contactEmail: "",
-        reporterEmail,
       });
       setAttachments([]);
     } catch (error) {
@@ -244,7 +255,7 @@ const ReportAnIssue = () => {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Reporter email</label>
-                  <input type="email" name="reporterEmail" required value={ticketForm.reporterEmail} readOnly className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-100 text-gray-700 sm:text-sm transition-all" placeholder="Auto-filled from login" />
+                  <input type="email" name="reporterEmail" required value={getReporterEmailFromAuthState()} readOnly className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-gray-100 text-gray-700 sm:text-sm transition-all" placeholder="Auto-filled from login" />
                 </div>
 
                 <div>

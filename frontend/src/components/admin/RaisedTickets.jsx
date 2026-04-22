@@ -17,6 +17,7 @@ import { getToken } from "../../utils/auth";
 const STATUS_META = {
   OPEN: { label: "Open", dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-200" },
   IN_PROGRESS: { label: "In Progress", dot: "bg-blue-500", chip: "bg-blue-50 text-blue-700 ring-blue-200" },
+  ON_HOLD: { label: "On Hold", dot: "bg-violet-500", chip: "bg-violet-50 text-violet-700 ring-violet-200" },
   RESOLVED: { label: "Resolved", dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
   CLOSED: { label: "Closed", dot: "bg-gray-400", chip: "bg-gray-100 text-gray-700 ring-gray-200" },
   REJECTED: { label: "Rejected", dot: "bg-rose-500", chip: "bg-rose-50 text-rose-700 ring-rose-200" },
@@ -31,6 +32,24 @@ const PRIORITY_META = {
 
 const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.OPEN;
 const getPriorityMeta = (priority) => PRIORITY_META[priority] || PRIORITY_META.MEDIUM;
+
+// Formats total turnaround time from ticket creation to resolution.
+const formatResolutionDuration = (createdAt, resolvedAt) => {
+  if (!createdAt || !resolvedAt) return null;
+  const start = new Date(createdAt).getTime();
+  const end = new Date(resolvedAt).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+
+  const totalMinutes = Math.floor((end - start) / 60000);
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return parts.join(" ");
+};
 
 const parseResponse = async (response) => {
   const contentType = response.headers.get("content-type") || "";
@@ -159,6 +178,7 @@ const RaisedTickets = () => {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const visibleTickets = useMemo(() => {
+    // Apply newest-first ordering, then local status/search filtering.
     const query = search.trim().toLowerCase();
     const sorted = [...tickets].sort((a, b) => {
       const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -184,6 +204,7 @@ const RaisedTickets = () => {
   }, [tickets, search, statusFilter]);
 
   const stats = useMemo(() => {
+    // Build dashboard summary cards from loaded ticket statuses.
     const counts = { total: tickets.length, open: 0, inProgress: 0, resolved: 0 };
     tickets.forEach((t) => {
       const s = t.status || "OPEN";
@@ -195,6 +216,7 @@ const RaisedTickets = () => {
   }, [tickets]);
 
   const getAllTickets = async () => {
+    // Main ticket fetch used on initial load and manual refresh.
     if (!token) {
       setError("Authentication token not found. Please login again.");
       setLoading(false);
@@ -242,6 +264,7 @@ const RaisedTickets = () => {
   };
 
   const fetchTicketComments = async (ticketId) => {
+    // Retrieve timeline comments for the selected ticket.
     if (!token || !ticketId) return;
     try {
       setLoadingComments(true);
@@ -262,6 +285,7 @@ const RaisedTickets = () => {
   };
 
   const openDetails = async (ticket) => {
+    // Open modal quickly with row data, then hydrate with full details.
     setSelectedTicket(ticket);
     setTicketDetails(ticket);
     setSelectedTechnicianId("");
@@ -291,6 +315,7 @@ const RaisedTickets = () => {
   };
 
   const assignTechnician = async () => {
+    // Assign or reassign a technician and keep modal data in sync.
     if (!selectedTicket?.id || !selectedTechnicianId) {
       toast.warning("Select a technician first.");
       return;
@@ -315,7 +340,7 @@ const RaisedTickets = () => {
       }
       toast.success("Technician assigned successfully.");
       await getAllTickets();
-      setSelectedTicket(null);
+      await openDetails(selectedTicket);
     } catch (err) {
       toast.error(err.message || "Technician assignment failed.");
     } finally {
@@ -329,6 +354,7 @@ const RaisedTickets = () => {
   };
 
   const postAdminComment = async (ticketId, content) => {
+    // Lightweight helper: best-effort comment posting after admin actions.
     if (!content || !token) return;
     try {
       await fetch(`/api/v1/tickets/${ticketId}/comments`, {
@@ -345,6 +371,7 @@ const RaisedTickets = () => {
   };
 
   const submitReplyComment = async () => {
+    // Admin replies are used for ON_HOLD -> IN_PROGRESS communication.
     const trimmed = replyComment.trim();
     if (!trimmed) {
       toast.warning("Type a reply before sending.");
@@ -369,9 +396,18 @@ const RaisedTickets = () => {
       if (!response.ok) {
         throw new Error(payload?.message || "Failed to post reply.");
       }
+      const ticketResponse = await fetch(`/api/v1/tickets/${selectedTicket.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const ticketPayload = await parseResponse(ticketResponse);
+      if (ticketResponse.ok && ticketPayload?.success && ticketPayload?.data) {
+        setTicketDetails(ticketPayload.data);
+        setSelectedTicket((prev) => (prev ? { ...prev, ...ticketPayload.data } : prev));
+      }
       setReplyComment("");
+      await getAllTickets(true);
       await fetchTicketComments(selectedTicket.id);
-      toast.success("Reply sent to technician.");
+      toast.success("Reply sent. Ticket moved to In Progress.");
     } catch (err) {
       toast.error(err.message || "Unable to post reply.");
     } finally {
@@ -380,6 +416,7 @@ const RaisedTickets = () => {
   };
 
   const closeTicket = async () => {
+    // Finalizes the ticket lifecycle after admin verifies resolution.
     if (!selectedTicket?.id) return;
     if (!token) {
       toast.error("Authentication token missing.");
@@ -407,7 +444,7 @@ const RaisedTickets = () => {
       toast.success("Ticket closed successfully.");
       await getAllTickets();
       setShowCloseModal(false);
-      setSelectedTicket(null);
+      await openDetails(selectedTicket);
     } catch (err) {
       toast.error(err.message || "Unable to close ticket.");
     } finally {
@@ -416,6 +453,7 @@ const RaisedTickets = () => {
   };
 
   const sendBackToTechnician = async () => {
+    // Reopen path when more work is needed from technician.
     if (!selectedTicket?.id) return;
     if (!token) {
       toast.error("Authentication token missing.");
@@ -445,7 +483,7 @@ const RaisedTickets = () => {
       toast.success("Ticket sent back to the technician.");
       await getAllTickets();
       setShowCloseModal(false);
-      setSelectedTicket(null);
+      await openDetails(selectedTicket);
     } catch (err) {
       toast.error(err.message || "Unable to reopen ticket.");
     } finally {
@@ -507,7 +545,7 @@ const RaisedTickets = () => {
             />
           </div>
           <div className="flex items-center gap-2 overflow-x-auto">
-            {["ALL", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"].map((key) => {
+            {["ALL", "OPEN", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED", "REJECTED"].map((key) => {
               const active = statusFilter === key;
               const label = key === "ALL" ? "All" : getStatusMeta(key).label;
               return (
@@ -604,6 +642,20 @@ const RaisedTickets = () => {
                           <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`} />
                           {statusMeta.label}
                         </span>
+                        {["RESOLVED", "CLOSED"].includes(ticket.status) && (
+                          (() => {
+                            const durationLabel = formatResolutionDuration(ticket.createdAt, ticket.resolvedAt);
+                            if (!durationLabel) return null;
+                            return (
+                              <div className="mt-2">
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-fuchsia-700">
+                                  <Clock className="w-3 h-3" />
+                                  {durationLabel}
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
                       </td>
                       <td className="px-5 py-4 align-middle">
                         <span className={`text-sm ${ticket.assigneeName ? "text-gray-800 font-medium" : "text-gray-400 italic"}`}>
@@ -707,9 +759,24 @@ const RaisedTickets = () => {
                         </div>
                       </div>
 
-                      {(ticketDetails?.status || selectedTicket?.status) === "RESOLVED" && (
+                      {["RESOLVED", "CLOSED"].includes(ticketDetails?.status || selectedTicket?.status) && (
                         <section className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-xl shadow-gray-200">
                           <h4 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-2">Review Resolution</h4>
+                          {(() => {
+                            const durationLabel = formatResolutionDuration(
+                              ticketDetails?.createdAt || selectedTicket?.createdAt,
+                              ticketDetails?.resolvedAt
+                            );
+                            if (!durationLabel) return null;
+                            return (
+                              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-fuchsia-200/50 bg-fuchsia-500/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-fuchsia-100 shadow-lg shadow-fuchsia-900/20">
+                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-fuchsia-400/30 text-fuchsia-100">
+                                  <Clock className="w-3 h-3" />
+                                </span>
+                                Resolution Time: {durationLabel}
+                              </div>
+                            );
+                          })()}
                           <p className="text-xs text-gray-300 leading-relaxed mb-4">
                             The technician marked this ticket as resolved. Close the case to finalize, or send it back with feedback if more work is required.
                           </p>
@@ -826,7 +893,7 @@ const RaisedTickets = () => {
                           )}
                         </div>
 
-                        {(ticketDetails?.status || selectedTicket?.status) === "IN_PROGRESS" && (
+                        {(ticketDetails?.status || selectedTicket?.status) === "ON_HOLD" && (
                           <div className="mt-5 pt-5 border-t border-gray-100">
                             <label htmlFor="admin-reply" className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">
                               Reply to Technician
