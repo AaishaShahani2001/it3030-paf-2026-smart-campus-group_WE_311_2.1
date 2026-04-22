@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Eye,
   X,
@@ -10,6 +12,7 @@ import {
   Wrench,
   CheckCircle2,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getToken } from "../../utils/auth";
@@ -32,6 +35,7 @@ const PRIORITY_META = {
 
 const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.OPEN;
 const getPriorityMeta = (priority) => PRIORITY_META[priority] || PRIORITY_META.MEDIUM;
+const STATUS_KEYS = ["OPEN", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED", "REJECTED"];
 
 // Formats total turnaround time from ticket creation to resolution.
 const formatResolutionDuration = (createdAt, resolvedAt) => {
@@ -215,6 +219,163 @@ const RaisedTickets = () => {
     return counts;
   }, [tickets]);
 
+  const reportRows = useMemo(() => {
+    return visibleTickets.map((ticket) => ({
+      id: ticket.id || "",
+      title: ticket.title || "Untitled",
+      reporter: ticket.reporterName || "Unknown",
+      assignee: ticket.assigneeName || "Unassigned",
+      status: ticket.status || "OPEN",
+      priority: ticket.priority || "MEDIUM",
+      category: (ticket.category || "OTHER").replace(/_/g, " "),
+      createdAt: ticket.createdAt ? new Date(ticket.createdAt).toISOString() : "",
+      resolvedAt: ticket.resolvedAt ? new Date(ticket.resolvedAt).toISOString() : "",
+      resolutionDuration: formatResolutionDuration(ticket.createdAt, ticket.resolvedAt) || "",
+    }));
+  }, [visibleTickets]);
+
+  const downloadFile = (filename, content, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const generateCsvReport = () => {
+    if (reportRows.length === 0) {
+      toast.warning("No ticket rows to export for the current filters.");
+      return;
+    }
+    const headers = [
+      "Ticket ID",
+      "Title",
+      "Reporter",
+      "Assignee",
+      "Status",
+      "Priority",
+      "Category",
+      "Created At",
+      "Resolved At",
+      "Resolution Duration",
+    ];
+    const csvLines = [
+      headers.join(","),
+      ...reportRows.map((row) =>
+        [
+          row.id,
+          row.title,
+          row.reporter,
+          row.assignee,
+          row.status,
+          row.priority,
+          row.category,
+          row.createdAt,
+          row.resolvedAt,
+          row.resolutionDuration,
+        ]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(",")
+      ),
+    ];
+    downloadFile(
+      `raised-tickets-report-${new Date().toISOString().slice(0, 10)}.csv`,
+      csvLines.join("\n"),
+      "text/csv;charset=utf-8;"
+    );
+    toast.success("CSV report downloaded.");
+  };
+
+  const generatePdfReport = () => {
+    if (reportRows.length === 0) {
+      toast.warning("No ticket rows to export for the current filters.");
+      return;
+    }
+    const generatedAt = new Date();
+    const generatedAtLabel = generatedAt.toLocaleString();
+    const summaryRows = STATUS_KEYS.map((status) => [
+      getStatusMeta(status).label,
+      reportRows.filter((row) => row.status === status).length,
+    ]);
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    doc.setFontSize(16);
+    doc.text("Campus Operations - Raised Tickets Report", 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${generatedAtLabel}`, 40, 58);
+    doc.text(`Total Rows: ${reportRows.length}`, 40, 74);
+    doc.text(
+      `Status Filter: ${statusFilter === "ALL" ? "All Statuses" : getStatusMeta(statusFilter).label}`,
+      260,
+      58
+    );
+    doc.text(`Search Filter: ${search || "N/A"}`, 260, 74);
+
+    autoTable(doc, {
+      startY: 90,
+      head: [["Status", "Count"]],
+      body: summaryRows,
+      theme: "grid",
+      headStyles: { fillColor: [5, 150, 105] },
+      styles: { fontSize: 9 },
+      tableWidth: 260,
+      margin: { left: 40 },
+    });
+
+    const tableRows = reportRows.map((row, index) => [
+      index + 1,
+      row.title,
+      row.reporter,
+      row.assignee,
+      getStatusMeta(row.status).label,
+      row.priority,
+      row.category,
+      row.createdAt ? new Date(row.createdAt).toLocaleString() : "—",
+      row.resolvedAt ? new Date(row.resolvedAt).toLocaleString() : "—",
+      row.resolutionDuration || "—",
+    ]);
+
+    autoTable(doc, {
+      startY: 200,
+      head: [[
+        "#",
+        "Title",
+        "Reporter",
+        "Assignee",
+        "Status",
+        "Priority",
+        "Category",
+        "Created",
+        "Resolved",
+        "Duration",
+      ]],
+      body: tableRows,
+      theme: "striped",
+      headStyles: { fillColor: [17, 24, 39] },
+      styles: { fontSize: 8, cellPadding: 4 },
+      columnStyles: {
+        0: { cellWidth: 24 },
+        1: { cellWidth: 140 },
+        2: { cellWidth: 80 },
+        3: { cellWidth: 80 },
+        4: { cellWidth: 62 },
+        5: { cellWidth: 52 },
+        6: { cellWidth: 68 },
+        7: { cellWidth: 95 },
+        8: { cellWidth: 95 },
+        9: { cellWidth: 68 },
+      },
+      margin: { left: 40, right: 40 },
+    });
+
+    doc.save(`raised-tickets-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success("PDF report downloaded.");
+  };
+
   const getAllTickets = async () => {
     // Main ticket fetch used on initial load and manual refresh.
     if (!token) {
@@ -259,7 +420,7 @@ const RaisedTickets = () => {
       const techUsers = users.filter((u) => (u?.role || "").toUpperCase() === "TECHNICIAN");
       setTechnicians(techUsers);
     } catch {
-      // Keep silent; assignment UI will still render.
+      //  assignment UI will still render.
     }
   };
 
@@ -354,7 +515,7 @@ const RaisedTickets = () => {
   };
 
   const postAdminComment = async (ticketId, content) => {
-    // Lightweight helper: best-effort comment posting after admin actions.
+    //  comment posting after admin actions.
     if (!content || !token) return;
     try {
       await fetch(`/api/v1/tickets/${ticketId}/comments`, {
@@ -366,7 +527,7 @@ const RaisedTickets = () => {
         body: JSON.stringify({ content }),
       });
     } catch {
-      // Non-fatal: the primary status update already succeeded.
+      //  the primary status update already succeeded.
     }
   };
 
@@ -532,9 +693,38 @@ const RaisedTickets = () => {
         ))}
       </div>
 
+      <div className="mb-6 bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Report Generation</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Export report using current search + status filters.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={generateCsvReport}
+              className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download CSV
+            </button>
+            <button
+              type="button"
+              onClick={generatePdfReport}
+              className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-gray-900 text-white hover:bg-gray-800 transition"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="relative w-full md:max-w-sm">
+          <div className="relative w-full md:max-w-xs">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="search"
@@ -544,8 +734,22 @@ const RaisedTickets = () => {
               className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition"
             />
           </div>
+          <div className="w-full md:w-56">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition"
+            >
+              <option value="ALL">All Statuses</option>
+              {STATUS_KEYS.map((status) => (
+                <option key={status} value={status}>
+                  {getStatusMeta(status).label}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-center gap-2 overflow-x-auto">
-            {["ALL", "OPEN", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "CLOSED", "REJECTED"].map((key) => {
+            {["ALL", ...STATUS_KEYS].map((key) => {
               const active = statusFilter === key;
               const label = key === "ALL" ? "All" : getStatusMeta(key).label;
               return (

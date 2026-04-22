@@ -82,7 +82,7 @@ const AdminDashboard = () => {
                   }`}
                   onClick={() => {
                     setActiveView(link.view);
-                    // Close sidebar only if we are on a smaller screen (matches lg breakpoint)
+                    // Close sidebar only if we are on a smaller screen 
                     if (window.innerWidth < 1024) setIsSidebarOpen(false);
                   }}
                 >
