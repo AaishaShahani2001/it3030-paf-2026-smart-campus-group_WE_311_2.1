@@ -20,6 +20,7 @@ import com.smartcampusopshub.backend.ticket.mapper.TicketMapper;
 import com.smartcampusopshub.backend.ticket.repository.TicketAttachmentRepository;
 import com.smartcampusopshub.backend.ticket.repository.TicketCommentRepository;
 import com.smartcampusopshub.backend.ticket.repository.TicketRepository;
+import com.smartcampusopshub.backend.ticket.enums.TicketPriority;
 import com.smartcampusopshub.backend.ticket.enums.TicketStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -223,6 +224,7 @@ public class TicketService {
     @Transactional
     public TicketResponseDto createTicket(CreateTicketRequestDto request, List<MultipartFile> attachments, String actorUsername) {
         User reporter = getActor(actorUsername);
+        LocalDateTime now = LocalDateTime.now();
 
         Ticket ticket = Ticket.builder()
                 .title(request.getTitle())
@@ -233,6 +235,8 @@ public class TicketService {
                 .contactPhone(request.getContactPhone())
                 .contactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail() : reporter.getEmail())
                 .reporter(reporter)
+                .slaFirstResponseDeadline(now.plus(request.getPriority().firstResponseSla()))
+                .slaResolutionDeadline(now.plus(request.getPriority().resolutionSla()))
                 .build();
 
         Ticket savedTicket = ticketRepository.save(ticket);
@@ -269,6 +273,7 @@ public class TicketService {
         ticket.setDescription(request.getDescription().trim());
         ticket.setCategory(request.getCategory());
         ticket.setPriority(request.getPriority());
+        applyResolutionSlaForPriorityChange(ticket, request.getPriority());
         ticket.setLocation(request.getLocation().trim());
         ticket.setContactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null);
         ticket.setContactEmail(StringUtils.hasText(request.getContactEmail())
@@ -351,5 +356,18 @@ public class TicketService {
             return false;
         }
         return content.trim().toLowerCase().startsWith("technician verification request:");
+    }
+
+    private void applyResolutionSlaForPriorityChange(Ticket ticket, TicketPriority nextPriority) {
+        if (nextPriority == null) {
+            return;
+        }
+        LocalDateTime anchor = ticket.getCreatedAt() != null ? ticket.getCreatedAt() : LocalDateTime.now();
+        ticket.setSlaResolutionDeadline(anchor.plus(nextPriority.resolutionSla()));
+
+        // Keep first-response SLA immutable once the first response is already recorded.
+        if (ticket.getFirstResponseAt() == null) {
+            ticket.setSlaFirstResponseDeadline(anchor.plus(nextPriority.firstResponseSla()));
+        }
     }
 }

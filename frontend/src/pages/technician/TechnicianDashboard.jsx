@@ -21,6 +21,40 @@ const parseResponse = async (response) => {
     return { success: false, message: text || "Request failed" };
 };
 
+const TERMINAL_STATUSES = new Set(['RESOLVED', 'CLOSED', 'REJECTED']);
+
+const getSlaLabel = (ticket) => {
+    if (!ticket?.slaResolutionDeadline) return null;
+    if (TERMINAL_STATUSES.has(ticket.status)) return null;
+
+    const rawMinutes = typeof ticket.resolutionMinutesRemaining === 'number'
+        ? ticket.resolutionMinutesRemaining
+        : Math.floor((new Date(ticket.slaResolutionDeadline).getTime() - Date.now()) / 60000);
+    const overdue = rawMinutes < 0;
+    const minutes = Math.abs(rawMinutes);
+    const days = Math.floor(minutes / (24 * 60));
+    const hours = Math.floor((minutes % (24 * 60)) / 60);
+    const mins = minutes % 60;
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0 || days > 0) parts.push(`${hours}h`);
+    parts.push(`${mins}m`);
+    return { overdue, text: `${overdue ? 'Overdue' : 'Due in'} ${parts.join(' ')}` };
+};
+
+const PRIORITY_DURATION = {
+    LOW: 72,
+    MEDIUM: 48,
+    HIGH: 24,
+    CRITICAL: 8,
+};
+
+const getPriorityDuration = (priority) => PRIORITY_DURATION[priority] || PRIORITY_DURATION.MEDIUM;
+const formatPriorityDuration = (priority) => {
+    const hours = getPriorityDuration(priority);
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+};
+
 const openAttachmentWithAuth = async (downloadUrl, token, fileName) => {
     // Open protected attachments in a new tab with bearer auth.
     if (!downloadUrl || !token) {
@@ -550,15 +584,29 @@ const TechJobsTab = ({ token, user }) => {
                     </div>
                 ) : tickets.map((ticket) => (
                     <div key={ticket.id} className="group bg-white rounded-3xl p-7 border border-gray-200 shadow-lg shadow-gray-200/50 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-green-200/40 hover:border-green-200 transition-all duration-300 relative overflow-hidden flex flex-col">
+                        {(() => {
+                            const sla = getSlaLabel(ticket);
+                            if (!sla) return null;
+                            return (
+                                <div className={`mb-3 inline-flex items-center self-start rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${sla.overdue ? 'bg-red-50 text-red-700 border-red-200' : 'bg-sky-50 text-sky-700 border-sky-200'}`}>
+                                    {sla.text}
+                                </div>
+                            );
+                        })()}
                         <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                         <div className="flex justify-between items-start mb-6 relative z-10">
-                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] border ${ticket.priority === 'CRITICAL' ? 'bg-red-50 text-red-600 border-red-100' :
-                                    ticket.priority === 'HIGH' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                        'bg-blue-50 text-blue-600 border-blue-100'
-                                }`}>
-                                {ticket.priority}
-                            </span>
+                            <div className="flex flex-col items-start gap-1.5">
+                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] border ${ticket.priority === 'CRITICAL' ? 'bg-red-50 text-red-600 border-red-100' :
+                                        ticket.priority === 'HIGH' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                            'bg-blue-50 text-blue-600 border-blue-100'
+                                    }`}>
+                                    {ticket.priority}
+                                </span>
+                                <span className="text-[10px] font-semibold tracking-wide text-gray-600">
+                                    Resolution Time: {formatPriorityDuration(ticket.priority)}
+                                </span>
+                            </div>
                             <span className={`text-[10px] font-black px-3 py-1 rounded-lg border uppercase tracking-widest ${ticket.status === 'RESOLVED' ? 'bg-green-50 text-green-700 border-green-100' :
                                     ticket.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
                                         ticket.status === 'ON_HOLD' ? 'bg-violet-50 text-violet-700 border-violet-100' :
@@ -638,10 +686,25 @@ const TechJobsTab = ({ token, user }) => {
                                                 <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                                                     <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Impact Level</p>
                                                     <p className="text-sm font-black text-red-600 uppercase tracking-tight">{selectedTicket.priority}</p>
+                                                    <p className="text-[10px] font-semibold tracking-wide text-gray-600 mt-1">
+                                                        Resolution Time: {formatPriorityDuration(selectedTicket.priority)}
+                                                    </p>
                                                 </div>
                                                 <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                                                     <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Target Location</p>
                                                     <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{selectedTicket.location}</p>
+                                                </div>
+                                                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Resolution Deadline</p>
+                                                    {(() => {
+                                                        const sla = getSlaLabel(activeTicket);
+                                                        if (!sla) return <p className="text-sm font-black text-gray-400 uppercase tracking-tight">—</p>;
+                                                        return (
+                                                            <p className={`text-sm font-black uppercase tracking-tight ${sla.overdue ? 'text-red-600' : 'text-sky-700'}`}>
+                                                                {sla.text}
+                                                            </p>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </section>

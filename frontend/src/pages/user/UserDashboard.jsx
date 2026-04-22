@@ -15,7 +15,7 @@ import { CalendarDays } from "lucide-react";
 const sidebarLinks = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "tickets", label: "My tickets", icon: TicketIcon },
-  { label: "Report an issue", to: "/report-an-issue", icon: AlertTriangle },
+  // { label: "Report an issue", to: "/report-an-issue", icon: AlertTriangle },
   { id: "bookings", label: "My bookings", icon: CalendarDays },
 ];
 
