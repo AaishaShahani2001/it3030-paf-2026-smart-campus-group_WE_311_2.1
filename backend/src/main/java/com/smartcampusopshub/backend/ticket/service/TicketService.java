@@ -6,6 +6,7 @@ import com.smartcampusopshub.backend.auth.repository.UserRepository;
 import com.smartcampusopshub.backend.common.exception.AccessDeniedException;
 import com.smartcampusopshub.backend.common.exception.BadRequestException;
 import com.smartcampusopshub.backend.common.exception.ResourceNotFoundException;
+import com.smartcampusopshub.backend.notification.EmailNotificationService;
 import com.smartcampusopshub.backend.ticket.dto.AssignTicketRequestDto;
 import com.smartcampusopshub.backend.ticket.dto.AddTicketCommentRequestDto;
 import com.smartcampusopshub.backend.ticket.dto.CreateTicketRequestDto;
@@ -51,6 +52,7 @@ public class TicketService {
     private final TicketCommentRepository ticketCommentRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final EmailNotificationService emailNotificationService;
 
     @Transactional(readOnly = true)
     public Page<TicketResponseDto> getAllTickets(int page, int size, UUID assigneeId, String reporterEmail) {
@@ -116,6 +118,7 @@ public class TicketService {
             addCommentInternal(ticket, assignee, "Ticket reassigned and reopened.");
         }
         Ticket saved = ticketRepository.save(ticket);
+        notifyTechnicianOnAssignment(saved);
         return TicketMapper.toResponseDto(saved);
     }
 
@@ -172,6 +175,7 @@ public class TicketService {
         }
 
         Ticket saved = ticketRepository.save(ticket);
+        notifyAdminsOnTechnicianRejection(saved, actor, previous, next, request.getReason());
         return TicketMapper.toResponseDto(saved);
     }
 
@@ -258,7 +262,78 @@ public class TicketService {
             }
         }
 
+        notifyAdminsOnTicketCreated(savedTicket, reporter);
         return TicketMapper.toResponseDto(savedTicket);
+    }
+
+    private void notifyAdminsOnTicketCreated(Ticket ticket, User reporter) {
+        List<String> adminEmails = userRepository.findByRole(Role.ADMIN).stream()
+                .map(User::getEmail)
+                .filter(StringUtils::hasText)
+                .toList();
+        if (adminEmails.isEmpty()) {
+            return;
+        }
+
+        String reporterName = reporter.getName() != null ? reporter.getName() : reporter.getUsername();
+        String subject = "New ticket created: " + ticket.getTitle();
+        String body = "A new support ticket has been created.\n\n"
+                + "Ticket ID: " + ticket.getId() + "\n"
+                + "Title: " + ticket.getTitle() + "\n"
+                + "Priority: " + ticket.getPriority() + "\n"
+                + "Category: " + ticket.getCategory() + "\n"
+                + "Location: " + ticket.getLocation() + "\n"
+                + "Reported by: " + reporterName + " (" + reporter.getEmail() + ")\n";
+        emailNotificationService.sendEmailToMany(adminEmails, subject, body);
+    }
+
+    private void notifyTechnicianOnAssignment(Ticket ticket) {
+        User assignee = ticket.getAssignee();
+        if (assignee == null || !StringUtils.hasText(assignee.getEmail())) {
+            return;
+        }
+
+        String subject = "Ticket assigned to you: " + ticket.getTitle();
+        String body = "A ticket has been assigned to you.\n\n"
+                + "Ticket ID: " + ticket.getId() + "\n"
+                + "Title: " + ticket.getTitle() + "\n"
+                + "Priority: " + ticket.getPriority() + "\n"
+                + "Status: " + ticket.getStatus() + "\n"
+                + "Location: " + ticket.getLocation() + "\n";
+        emailNotificationService.sendEmail(assignee.getEmail(), subject, body);
+    }
+
+    private void notifyAdminsOnTechnicianRejection(
+            Ticket ticket,
+            User actor,
+            TicketStatus previousStatus,
+            TicketStatus nextStatus,
+            String rejectionReason
+    ) {
+        if (actor == null || actor.getRole() != Role.TECHNICIAN) {
+            return;
+        }
+        if (previousStatus == TicketStatus.REJECTED || nextStatus != TicketStatus.REJECTED) {
+            return;
+        }
+
+        List<String> adminEmails = userRepository.findByRole(Role.ADMIN).stream()
+                .map(User::getEmail)
+                .filter(StringUtils::hasText)
+                .toList();
+        if (adminEmails.isEmpty()) {
+            return;
+        }
+
+        String actorName = actor.getName() != null ? actor.getName() : actor.getUsername();
+        String reasonText = StringUtils.hasText(rejectionReason) ? rejectionReason.trim() : "No reason provided.";
+        String subject = "Ticket rejected by technician: " + ticket.getTitle();
+        String body = "A technician rejected an assigned ticket.\n\n"
+                + "Ticket ID: " + ticket.getId() + "\n"
+                + "Title: " + ticket.getTitle() + "\n"
+                + "Technician: " + actorName + " (" + actor.getEmail() + ")\n"
+                + "Reason: " + reasonText + "\n";
+        emailNotificationService.sendEmailToMany(adminEmails, subject, body);
     }
 
     @Transactional

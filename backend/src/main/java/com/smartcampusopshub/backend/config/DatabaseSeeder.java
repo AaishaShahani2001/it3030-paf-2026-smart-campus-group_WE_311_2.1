@@ -9,7 +9,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Configuration
 public class DatabaseSeeder implements CommandLineRunner {
@@ -31,34 +35,57 @@ public class DatabaseSeeder implements CommandLineRunner {
     private void seedUsers() {
         List<SeedUser> seeds = List.of(
                 new SeedUser("Campus Admin", "admin", "admin@campus.local", "Admin@123", Role.ADMIN),
+                new SeedUser("Dheena", "AdminDheena", "amjathdheena@gmail.com", "Dheena@123", Role.ADMIN),
                 new SeedUser("Tech One", "tech1", "tech1@campus.local", "Tech@123", Role.TECHNICIAN),
                 new SeedUser("Tech Two", "tech2", "tech2@campus.local", "Tech@123", Role.TECHNICIAN),
                 new SeedUser("Tech Three", "tech3", "tech3@campus.local", "Tech@123", Role.TECHNICIAN)
         );
 
         int created = 0;
+        int updated = 0;
+        int mergedDuplicates = 0;
         for (SeedUser seed : seeds) {
-            boolean alreadyExists = userRepository.findByUsername(seed.username()).isPresent()
-                    || userRepository.findByEmail(seed.email()).isPresent();
+            List<User> matchingByUsername = userRepository.findAllByUsername(seed.username());
+            List<User> matchingByEmail = userRepository.findAllByEmail(seed.email());
 
-            if (alreadyExists) {
-                log.debug("Seed user '{}' already present — skipping.", seed.username());
-                continue;
+            Map<UUID, User> uniqueMatches = new LinkedHashMap<>();
+            for (User existing : matchingByUsername) {
+                uniqueMatches.put(existing.getId(), existing);
+            }
+            for (User existing : matchingByEmail) {
+                uniqueMatches.put(existing.getId(), existing);
             }
 
-            User user = new User();
+            List<User> matches = new ArrayList<>(uniqueMatches.values());
+            boolean isExistingUser = !matches.isEmpty();
+            User user = isExistingUser ? matches.get(0) : new User();
             user.setName(seed.name());
             user.setUsername(seed.username());
             user.setEmail(seed.email());
             user.setPassword(passwordEncoder.encode(seed.rawPassword()));
             user.setRole(seed.role());
             userRepository.save(user);
-            created++;
-            log.info("Seeded {} user '{}' ({})", seed.role(), seed.username(), seed.email());
+
+            if (matches.size() > 1) {
+                List<User> duplicates = matches.subList(1, matches.size());
+                userRepository.deleteAll(duplicates);
+                mergedDuplicates += duplicates.size();
+                log.warn("Merged {} duplicate record(s) for seeded user '{}' / '{}'.",
+                        duplicates.size(), seed.username(), seed.email());
+            }
+
+            if (isExistingUser) {
+                updated++;
+                log.info("Updated seeded {} user '{}' ({})", seed.role(), seed.username(), seed.email());
+            } else {
+                created++;
+                log.info("Seeded {} user '{}' ({})", seed.role(), seed.username(), seed.email());
+            }
         }
 
-        if (created > 0) {
-            log.info("DatabaseSeeder created {} default account(s).", created);
+        if (created > 0 || updated > 0 || mergedDuplicates > 0) {
+            log.info("DatabaseSeeder created {}, updated {}, and merged {} duplicate account(s).",
+                    created, updated, mergedDuplicates);
         } else {
             log.info("DatabaseSeeder: all default accounts already present.");
         }
