@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import { getToken } from "../utils/auth";
 
+
 const RESOURCES_API = "/api/resources";
 
 async function fetchResourcesList() {
@@ -90,7 +91,7 @@ const ResourceCard = ({ resource, onBookClick }) => {
           onClick={() => onBookClick(resource)}
           className="w-full mt-auto py-2.5 rounded-xl text-sm font-bold text-white bg-linear-to-r from-emerald-600 to-teal-500 shadow-[0_4px_12px_rgba(16,185,129,0.3)] hover:shadow-[0_6px_18px_rgba(16,185,129,0.45)] hover:-translate-y-0.5 transition-all disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
-          Book now
+          Book Now
         </button>
       </div>
     </div>
@@ -119,18 +120,18 @@ const Resources = () => {
   }, [load]);
 
   const handleBookClick = (resource) => {
-    if (!getToken()) {
-      toast.info("Please log in to book a resource.");
-      navigate("/login");
-      return;
-    }
-    navigate("/user/dashboard", {
-      state: { bookResourceId: resource.id, bookResourceName: resource.name },
-    });
-  };
+  if (!getToken()) {
+    toast.info("Please log in to book a resource.");
+    navigate("/login");
+    return;
+  }
+
+  // ✅ go to booking page
+  navigate(`/book/${resource.id}`);
+};
 
   return (
-    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen">
+    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-transparent min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Resources</h1>

@@ -114,9 +114,11 @@ public class TicketController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<TicketResponseDto>> createTicket(
             @Valid @RequestPart("ticket") CreateTicketRequestDto request,
-            @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
+            @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
-        TicketResponseDto ticket = ticketService.createTicket(request, attachments);
+        String username = extractUsername(authorizationHeader);
+        TicketResponseDto ticket = ticketService.createTicket(request, attachments, username);
         return ResponseEntity.ok(ApiResponse.success("Ticket created successfully", ticket));
     }
 

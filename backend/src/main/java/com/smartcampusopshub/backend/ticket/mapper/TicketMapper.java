@@ -6,6 +6,8 @@ import com.smartcampusopshub.backend.ticket.dto.TicketResponseDto;
 import com.smartcampusopshub.backend.ticket.entity.TicketAttachment;
 import com.smartcampusopshub.backend.ticket.entity.Ticket;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,6 +17,21 @@ public final class TicketMapper {
     }
 
     public static TicketResponseDto toResponseDto(Ticket ticket) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime effectiveResolutionDeadline = ticket.getSlaResolutionDeadline();
+        if (effectiveResolutionDeadline == null && ticket.getCreatedAt() != null && ticket.getPriority() != null) {
+            effectiveResolutionDeadline = ticket.getCreatedAt().plus(ticket.getPriority().resolutionSla());
+        }
+        LocalDateTime effectiveFirstResponseDeadline = ticket.getSlaFirstResponseDeadline();
+        if (effectiveFirstResponseDeadline == null && ticket.getCreatedAt() != null && ticket.getPriority() != null) {
+            effectiveFirstResponseDeadline = ticket.getCreatedAt().plus(ticket.getPriority().firstResponseSla());
+        }
+        Long minutesRemaining = null;
+        Boolean overdue = null;
+        if (effectiveResolutionDeadline != null) {
+            minutesRemaining = Duration.between(now, effectiveResolutionDeadline).toMinutes();
+            overdue = minutesRemaining < 0;
+        }
         return TicketResponseDto.builder()
                 .id(ticket.getId())
                 .title(ticket.getTitle())
@@ -44,6 +61,10 @@ public final class TicketMapper {
                 .attachments(mapAttachments(ticket.getAttachments()))
                 .firstResponseAt(ticket.getFirstResponseAt())
                 .resolvedAt(ticket.getResolvedAt())
+                .slaFirstResponseDeadline(effectiveFirstResponseDeadline)
+                .slaResolutionDeadline(effectiveResolutionDeadline)
+                .resolutionMinutesRemaining(minutesRemaining)
+                .resolutionOverdue(overdue)
                 .createdAt(ticket.getCreatedAt())
                 .build();
     }

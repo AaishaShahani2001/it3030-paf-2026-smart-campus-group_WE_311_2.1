@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 const decodeJwtPayload = (token) => {
+  // Safely decode JWT payload for deriving current user identity.
   try {
     const payload = token.split(".")[1];
     if (!payload) return null;
@@ -46,6 +47,7 @@ const getAuthUserId = (token) => {
 };
 
 const getReporterEmailFromAuthState = () => {
+  // Resolve reporter email from multiple storage conventions used across auth flows.
   const directKeys = ["reporterEmail", "userEmail", "email"];
   for (const key of directKeys) {
     const value = localStorage.getItem(key);
@@ -77,6 +79,7 @@ const getReporterEmailFromAuthState = () => {
 };
 
 const parseResponse = async (response) => {
+  // Normalize API responses so callers can handle JSON and plain text uniformly.
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     return response.json();
@@ -88,6 +91,7 @@ const parseResponse = async (response) => {
 const STATUS_META = {
   OPEN: { label: "Open", chip: "bg-amber-50 text-amber-700 ring-amber-200", dot: "bg-amber-500" },
   IN_PROGRESS: { label: "In Progress", chip: "bg-blue-50 text-blue-700 ring-blue-200", dot: "bg-blue-500" },
+  ON_HOLD: { label: "On Hold", chip: "bg-violet-50 text-violet-700 ring-violet-200", dot: "bg-violet-500" },
   RESOLVED: { label: "Resolved", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
   CLOSED: { label: "Closed", chip: "bg-gray-100 text-gray-700 ring-gray-200", dot: "bg-gray-400" },
   REJECTED: { label: "Rejected", chip: "bg-rose-50 text-rose-700 ring-rose-200", dot: "bg-rose-500" },
@@ -98,6 +102,12 @@ const PRIORITY_META = {
   MEDIUM: { label: "Medium", chip: "bg-sky-50 text-sky-700 ring-sky-200" },
   HIGH: { label: "High", chip: "bg-orange-50 text-orange-700 ring-orange-200" },
   CRITICAL: { label: "Critical", chip: "bg-rose-50 text-rose-700 ring-rose-200" },
+};
+const PRIORITY_DURATION = {
+  LOW: 72,
+  MEDIUM: 48,
+  HIGH: 24,
+  CRITICAL: 8,
 };
 
 const CATEGORIES = [
@@ -115,12 +125,19 @@ const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
 const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.OPEN;
 const getPriorityMeta = (priority) => PRIORITY_META[priority] || PRIORITY_META.MEDIUM;
+const getPriorityDuration = (priority) => PRIORITY_DURATION[priority] || PRIORITY_DURATION.MEDIUM;
+const formatPriorityDuration = (priority) => {
+  const hours = getPriorityDuration(priority);
+  return `${hours} hour${hours === 1 ? "" : "s"}`;
+};
 
 const formatDateTime = (value) => {
   if (!value) return "—";
   const d = new Date(value);
   return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 };
+
+const formatCategory = (category) => (category || "OTHER").replace(/_/g, " ");
 
 const AllTickets = () => {
   const [tickets, setTickets] = useState([]);
@@ -134,12 +151,14 @@ const AllTickets = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const token = getToken();
   const reporterEmail = getReporterEmailFromAuthState();
   const authUserId = getAuthUserId(token);
 
   const fetchTickets = useCallback(async (opts = {}) => {
+    // Load current user's tickets and apply an extra client-side ownership guard.
     const silent = Boolean(opts.silent);
     if (!token) {
       setLoading(false);
@@ -199,6 +218,7 @@ const AllTickets = () => {
   }, [fetchTickets]);
 
   const sortedTickets = useMemo(() => {
+    // Keep newest tickets first for consistent table and card ordering.
     return [...tickets].sort((a, b) => {
       const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -206,9 +226,27 @@ const AllTickets = () => {
     });
   }, [tickets]);
 
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(sortedTickets.length / PAGE_SIZE));
+  const paginatedTickets = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return sortedTickets.slice(start, start + PAGE_SIZE);
+  }, [sortedTickets, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortedTickets.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const canMutate = (ticket) => (ticket?.status || "OPEN") === "OPEN";
 
   const loadComments = useCallback(async (ticketId) => {
+    // Fetch full ticket discussion thread for the view modal.
     if (!ticketId || !token) return;
     try {
       setLoadingComments(true);
@@ -449,83 +487,138 @@ const AllTickets = () => {
           <p className="mt-1 text-sm text-gray-500">When you report an issue, it will show up here.</p>
         </div>
       ) : (
-        <ul className="space-y-3">
-          {sortedTickets.map((t) => {
-            const statusMeta = getStatusMeta(t.status);
-            const priorityMeta = getPriorityMeta(t.priority);
-            const mutable = canMutate(t);
-            return (
-              <li
-                key={t.id}
-                className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm shadow-gray-200/40 transition-shadow hover:shadow-md"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-gray-900 truncate">{t.title}</h3>
-                    <p className="mt-1 text-sm text-gray-600 line-clamp-2">{t.description}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5 text-emerald-600" />
-                        {t.location}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {formatDateTime(t.createdAt)}
-                      </span>
-                      <span className="text-gray-400">·</span>
-                      <span>{(t.category || "OTHER").replace(/_/g, " ")}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusMeta.chip}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`} />
-                      {statusMeta.label}
-                    </span>
-                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${priorityMeta.chip}`}>
-                      {(t.priority === "HIGH" || t.priority === "CRITICAL") && <AlertTriangle className="w-3.5 h-3.5" />}
-                      {priorityMeta.label}
-                    </span>
-                  </div>
-                </div>
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50/90">
+                <tr>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">Ticket</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">Category</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">Location</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">Created</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">Priority</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {paginatedTickets.map((t) => {
+                  const statusMeta = getStatusMeta(t.status);
+                  const priorityMeta = getPriorityMeta(t.priority);
+                  const mutable = canMutate(t);
+                  return (
+                    <tr key={t.id} className="group transition-colors hover:bg-emerald-50/30">
+                      <td className="px-4 py-3 align-top">
+                        <div className="max-w-75">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{t.title}</p>
+                          <p className="mt-1 text-xs text-gray-500 line-clamp-2">{t.description}</p>
+                          <p className="mt-1 text-[11px] text-gray-400">
+                            Ref #{String(t.id ?? "").slice(0, 8) || "—"}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                          {formatCategory(t.category)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-gray-700">
+                          <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                          <span className="max-w-42.5 truncate">{t.location || "—"}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-top text-xs text-gray-600 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5 text-gray-400" />
+                          {formatDateTime(t.createdAt)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusMeta.chip}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`} />
+                          {statusMeta.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${priorityMeta.chip}`}>
+                            {(t.priority === "HIGH" || t.priority === "CRITICAL") && <AlertTriangle className="w-3.5 h-3.5" />}
+                            {priorityMeta.label}
+                          </span>
+                          <span className="text-[10px] font-semibold tracking-wide text-gray-600">
+                            Resolution Time: {formatPriorityDuration(t.priority)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openView(t)}
+                            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(t)}
+                            disabled={!mutable}
+                            title={mutable ? "Edit ticket" : "Editing is locked once work has started"}
+                            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-gray-700"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(t)}
+                            disabled={!mutable}
+                            title={mutable ? "Delete ticket" : "Cannot delete once a technician has begun work"}
+                            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-rose-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openView(t)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-emerald-200 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    View Timeline
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openEdit(t)}
-                    disabled={!mutable}
-                    title={mutable ? "Edit ticket" : "Editing is locked once work has started"}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-blue-200 hover:text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-700 disabled:hover:bg-white"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(t)}
-                    disabled={!mutable}
-                    title={mutable ? "Delete ticket" : "Cannot delete once a technician has begun work"}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 hover:border-rose-200 hover:text-rose-700 hover:bg-rose-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-rose-600 disabled:hover:bg-white"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+      {sortedTickets.length > 0 && (
+        <div className="flex items-center justify-end gap-2 text-xs text-gray-500">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-2 py-1 rounded border border-gray-200 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <span>
+            Page <span className="font-semibold text-gray-700">{currentPage}</span> of{" "}
+            <span className="font-semibold text-gray-700">{totalPages}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-2 py-1 rounded border border-gray-200 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
       )}
 
       {viewTicket && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-start gap-4 bg-gray-50/60">
               <div className="min-w-0">
@@ -557,10 +650,15 @@ const AllTickets = () => {
                 {(() => {
                   const meta = getPriorityMeta(viewTicket.priority);
                   return (
-                    <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${meta.chip}`}>
-                      {(viewTicket.priority === "HIGH" || viewTicket.priority === "CRITICAL") && <AlertTriangle className="w-3.5 h-3.5" />}
-                      {meta.label}
-                    </span>
+                    <div className="inline-flex flex-col items-start gap-1.5">
+                      <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${meta.chip}`}>
+                        {(viewTicket.priority === "HIGH" || viewTicket.priority === "CRITICAL") && <AlertTriangle className="w-3.5 h-3.5" />}
+                        {meta.label}
+                      </span>
+                      <span className="text-[10px] font-semibold tracking-wide text-gray-600">
+                        Resolution Time: {formatPriorityDuration(viewTicket.priority)}
+                      </span>
+                    </div>
                   );
                 })()}
                 <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-gray-50 text-gray-600 ring-gray-200">
@@ -614,7 +712,7 @@ const AllTickets = () => {
                       }[event.tone] || "bg-gray-400 ring-gray-100";
                       return (
                         <li key={event.id} className="relative">
-                          <span className={`absolute -left-[22px] top-1.5 w-3 h-3 rounded-full ring-4 ${toneRing}`} />
+                          <span className={`absolute -left-5.5 top-1.5 w-3 h-3 rounded-full ring-4 ${toneRing}`} />
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-gray-900 truncate">{event.title}</p>
@@ -651,7 +749,7 @@ const AllTickets = () => {
       )}
 
       {editTicket && editForm && createPortal(
-        <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-105 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/60">
               <div>
@@ -772,7 +870,7 @@ const AllTickets = () => {
       )}
 
       {deleteTarget && createPortal(
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100">
             <div className="p-6 text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">

@@ -31,5 +31,9 @@ public class TicketResponseDto {
     private List<TicketAttachmentDto> attachments;
     private LocalDateTime firstResponseAt;
     private LocalDateTime resolvedAt;
+    private LocalDateTime slaFirstResponseDeadline;
+    private LocalDateTime slaResolutionDeadline;
+    private Long resolutionMinutesRemaining;
+    private Boolean resolutionOverdue;
     private LocalDateTime createdAt;
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -9,11 +9,14 @@ import {
   X,
 } from "lucide-react";
 import RaisedTickets from "../../components/admin/RaisedTickets";
+import AdminBookings from "../../components/admin/AdminBookings";
 
 const sidebarLinks = [
   { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard, view: "overview" },
   { label: "Manage Facilities", to: "/admin/facilities", icon: Wrench, view: "facilities" },
-  { label: "Raised Tickets", to: "/admin/dashboard", icon: Ticket, view: "tickets" },
+  { label: "Raised Tickets", to: "/admin/tickets", icon: Ticket, view: "tickets" },
+  { label: "Manage Bookings", to: "/admin/dashboard", icon: Ticket, view: "bookings" },
+
 ];
 
 const AdminDashboard = () => {
@@ -23,8 +26,20 @@ const AdminDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeView, setActiveView] = useState("overview");
 
+  useEffect(() => {
+    if (location.pathname === "/admin/tickets") {
+      setActiveView("tickets");
+      return;
+    }
+    if (location.pathname === "/admin/bookings") {
+      setActiveView("bookings");
+      return;
+    }
+    setActiveView("overview");
+  }, [location.pathname]);
+
   return (
-    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+    <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-transparent min-h-screen">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 relative transition-all duration-300">
         
         {/* Sidebar Overlay for mobile */}
@@ -67,7 +82,7 @@ const AdminDashboard = () => {
                   }`}
                   onClick={() => {
                     setActiveView(link.view);
-                    // Close sidebar only if we are on a smaller screen (matches lg breakpoint)
+                    // Close sidebar only if we are on a smaller screen 
                     if (window.innerWidth < 1024) setIsSidebarOpen(false);
                   }}
                 >
@@ -109,6 +124,8 @@ const AdminDashboard = () => {
           <div className="bg-white border border-gray-100 rounded-3xl shadow-lg shadow-gray-200/50 p-6 sm:p-8">
             {activeView === "tickets" ? (
               <RaisedTickets />
+            ) : activeView === "bookings" ? (
+              <AdminBookings />
             ) : (
               <>
                 <div className="flex items-center gap-3 mb-2">

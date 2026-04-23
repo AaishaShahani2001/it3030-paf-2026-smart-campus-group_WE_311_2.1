@@ -34,9 +34,4 @@ public class CreateTicketRequestDto {
     @Email
     @Size(max = 255)
     private String contactEmail;
-
-    @NotBlank
-    @Email
-    @Size(max = 255)
-    private String reporterEmail;
 }

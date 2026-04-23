@@ -20,6 +20,7 @@ import com.smartcampusopshub.backend.ticket.mapper.TicketMapper;
 import com.smartcampusopshub.backend.ticket.repository.TicketAttachmentRepository;
 import com.smartcampusopshub.backend.ticket.repository.TicketCommentRepository;
 import com.smartcampusopshub.backend.ticket.repository.TicketRepository;
+import com.smartcampusopshub.backend.ticket.enums.TicketPriority;
 import com.smartcampusopshub.backend.ticket.enums.TicketStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -158,6 +159,11 @@ public class TicketService {
             ticket.setRejectionReason(request.getReason().trim());
             ticket.setResolvedAt(null);
             addCommentInternal(ticket, actor, "Rejected: " + request.getReason().trim());
+        } else if (next == TicketStatus.ON_HOLD) {
+            String note = StringUtils.hasText(request.getReason())
+                    ? request.getReason().trim()
+                    : "Technician requested verification from admin.";
+            addCommentInternal(ticket, actor, "On hold: " + note);
         } else if (next == TicketStatus.CLOSED) {
             String note = StringUtils.hasText(request.getResolutionNotes())
                     ? request.getResolutionNotes().trim()
@@ -174,7 +180,21 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
         User actor = getActor(actorUsername);
-        TicketComment saved = addCommentInternal(ticket, actor, request.getContent().trim());
+        String trimmedContent = request.getContent().trim();
+        TicketComment saved = addCommentInternal(ticket, actor, trimmedContent);
+
+        if (actor.getRole() == Role.TECHNICIAN
+                && ticket.getStatus() == TicketStatus.IN_PROGRESS
+                && isExplicitVerificationRequest(trimmedContent)) {
+            ticket.setStatus(TicketStatus.ON_HOLD);
+            addCommentInternal(ticket, actor, "Ticket moved to ON_HOLD pending admin verification.");
+        } else if (actor.getRole() == Role.ADMIN && ticket.getStatus() == TicketStatus.ON_HOLD) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+            addCommentInternal(ticket, actor, "Admin replied. Ticket moved back to IN_PROGRESS.");
+        }
+
+        ticketRepository.save(ticket);
+
         return TicketCommentResponseDto.builder()
                 .id(saved.getId())
                 .authorId(actor.getId())
@@ -202,9 +222,9 @@ public class TicketService {
     }
 
     @Transactional
-    public TicketResponseDto createTicket(CreateTicketRequestDto request, List<MultipartFile> attachments) {
-        User reporter = userRepository.findByEmail(request.getReporterEmail())
-                .orElseThrow(() -> new BadRequestException("Reporter user not found for email: " + request.getReporterEmail()));
+    public TicketResponseDto createTicket(CreateTicketRequestDto request, List<MultipartFile> attachments, String actorUsername) {
+        User reporter = getActor(actorUsername);
+        LocalDateTime now = LocalDateTime.now();
 
         Ticket ticket = Ticket.builder()
                 .title(request.getTitle())
@@ -215,6 +235,8 @@ public class TicketService {
                 .contactPhone(request.getContactPhone())
                 .contactEmail(StringUtils.hasText(request.getContactEmail()) ? request.getContactEmail() : reporter.getEmail())
                 .reporter(reporter)
+                .slaFirstResponseDeadline(now.plus(request.getPriority().firstResponseSla()))
+                .slaResolutionDeadline(now.plus(request.getPriority().resolutionSla()))
                 .build();
 
         Ticket savedTicket = ticketRepository.save(ticket);
@@ -251,6 +273,7 @@ public class TicketService {
         ticket.setDescription(request.getDescription().trim());
         ticket.setCategory(request.getCategory());
         ticket.setPriority(request.getPriority());
+        applyResolutionSlaForPriorityChange(ticket, request.getPriority());
         ticket.setLocation(request.getLocation().trim());
         ticket.setContactPhone(StringUtils.hasText(request.getContactPhone()) ? request.getContactPhone().trim() : null);
         ticket.setContactEmail(StringUtils.hasText(request.getContactEmail())
@@ -319,9 +342,32 @@ public class TicketService {
         String value = content == null ? "" : content.toLowerCase();
         if (value.startsWith("rejected:")) return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.REJECTION;
         if (value.startsWith("resolved:")) return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.RESOLUTION;
-        if (value.contains("reassigned") || value.contains("started assessment")) {
+        if (value.contains("reassigned")
+                || value.contains("started assessment")
+                || value.contains("moved to on_hold")
+                || value.contains("moved back to in_progress")) {
             return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.STATUS_CHANGE;
         }
         return com.smartcampusopshub.backend.ticket.enums.TicketCommentType.NOTE;
+    }
+
+    private boolean isExplicitVerificationRequest(String content) {
+        if (!StringUtils.hasText(content)) {
+            return false;
+        }
+        return content.trim().toLowerCase().startsWith("technician verification request:");
+    }
+
+    private void applyResolutionSlaForPriorityChange(Ticket ticket, TicketPriority nextPriority) {
+        if (nextPriority == null) {
+            return;
+        }
+        LocalDateTime anchor = ticket.getCreatedAt() != null ? ticket.getCreatedAt() : LocalDateTime.now();
+        ticket.setSlaResolutionDeadline(anchor.plus(nextPriority.resolutionSla()));
+
+        // Keep first-response SLA immutable once the first response is already recorded.
+        if (ticket.getFirstResponseAt() == null) {
+            ticket.setSlaFirstResponseDeadline(anchor.plus(nextPriority.firstResponseSla()));
+        }
     }
 }
