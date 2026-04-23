@@ -12,6 +12,13 @@ const Login = () => {
   const googleButtonRef = useRef(null);
   const googleButtonRenderedRef = useRef(false);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+  const googleAllowedOrigins = (import.meta.env.VITE_GOOGLE_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const currentOrigin = window.location.origin;
+  const isGoogleOriginAllowed =
+    googleAllowedOrigins.length === 0 || googleAllowedOrigins.includes(currentOrigin);
   const navigate = useNavigate();
 
   const completeLogin = (data, fallbackUsername = "") => {
@@ -72,7 +79,7 @@ const Login = () => {
   };
 
   useEffect(() => {
-    if (!googleClientId) {
+    if (!googleClientId || !isGoogleOriginAllowed) {
       return undefined;
     }
 
@@ -137,7 +144,7 @@ const Login = () => {
         script.parentNode.removeChild(script);
       }
     };
-  }, [googleClientId]);
+  }, [googleClientId, isGoogleOriginAllowed]);
 
   return (
       <main className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
@@ -187,14 +194,21 @@ const Login = () => {
             </div>
             <p className="mt-4 text-center text-sm font-semibold text-gray-700">Continue with Google</p>
             {googleClientId ? (
-              <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-                <div className="flex justify-center">
-                  <div ref={googleButtonRef} />
+              isGoogleOriginAllowed ? (
+                <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                  <div className="flex justify-center">
+                    <div ref={googleButtonRef} />
+                  </div>
+                  <p className="mt-2 text-center text-xs text-gray-500">
+                    Use your Google account for faster sign-in.
+                  </p>
                 </div>
-                <p className="mt-2 text-center text-xs text-gray-500">
-                  Use your Google account for faster sign-in.
+              ) : (
+                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-700">
+                  Google sign-in is disabled for <code>{currentOrigin}</code>. Add this origin to{" "}
+                  <code>VITE_GOOGLE_ALLOWED_ORIGINS</code> and Google Cloud OAuth Authorized JavaScript origins.
                 </p>
-              </div>
+              )
             ) : (
               <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-700">
                 Google sign-in is not configured yet. Set <code>VITE_GOOGLE_CLIENT_ID</code>.
