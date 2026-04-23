@@ -1,19 +1,25 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import Home from './pages/Home';
-import ResourceList from './pages/ResourceList';
-import AdminPage from './pages/AdminPage';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import AdminPage from "./pages/AdminPage";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import TechnicianDashboard from './pages/technician/TechnicianDashboard';
+import UserDashboard from "./pages/user/UserDashboard";
+import ReportAnIssue from "./pages/ReportAnIssue";
+import Resources from './pages/Resources';
+import BookingPage from "./pages/Booking/BookingPage";
+import MyBookings from "./pages/Booking/MyBookings";
+import MyBookingsCalendar from "./pages/Booking/MyBookingsCalendar";
 
-import ReportAnIssue from './pages/ReportAnIssue';
-
-const Layout = ({ children }) => (
-  <div className="min-h-screen font-sans bg-white selection:bg-emerald-100 flex flex-col">
+const AppLayout = ({ children }) => (
+  <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
     <Navbar />
-    <main className="flex-1">{children}</main>
+    <div className="grow bg-white">{children}</div>
     <Footer />
   </div>
 );
@@ -23,18 +29,29 @@ const App = () => {
     <>
       <ToastContainer position="top-right" autoClose={3000} />
       <Routes>
-        <Route path="/" element={<Navigate to="/home" replace />} />
-        {/* We keep Home as is, since it has its own layout pattern, or wrap it if preferred. 
-            Home.jsx already has Navbar and Footer, so we just render it outside Layout */}
-        <Route path="/home" element={<Home />} />
-        
-        <Route path="/facilities" element={<Layout><ResourceList /></Layout>} />
-        <Route path="/admin/facilities" element={<Layout><AdminPage /></Layout>} />
+        <Route path="/" element={<Navigate to="/home" />} />
+        <Route path="/home" element={<AppLayout><Home /></AppLayout>} />
+        <Route path="/resources" element={<AppLayout><Resources /></AppLayout>} />
+        <Route path="/admin/dashboard" element={<AppLayout><AdminDashboard /></AppLayout>} />
+        <Route path="/admin/tickets" element={<AppLayout><AdminDashboard /></AppLayout>} />
+        <Route path="/admin/bookings" element={<AppLayout><AdminDashboard /></AppLayout>} />
+        <Route path="/technician/dashboard" element={<AppLayout><TechnicianDashboard /></AppLayout>} />
+        <Route path="/user/dashboard" element={<AppLayout><UserDashboard /></AppLayout>} />
+        <Route path="/admin/facilities" element={<AppLayout><AdminPage /></AppLayout>} />
+        <Route path="/report-an-issue" element={<AppLayout><ReportAnIssue /></AppLayout>} />
 
-        <Route path="/report-an-issue" element={<ReportAnIssue />} />
+        <Route path="/login" element={<AppLayout><Login /></AppLayout>} />
+        <Route path="/register" element={<AppLayout><Register /></AppLayout>} />
+
+      // Booking routes
+      <Route path="/book/:id" element={<AppLayout><BookingPage /></AppLayout>} />
+      <Route path="/bookings" element={<AppLayout><MyBookings hideLayout={true} /></AppLayout>} />
+      <Route path="/bookings-calendar" element={<AppLayout><MyBookingsCalendar /></AppLayout>} />
+
+
       </Routes>
     </>
-  )
-}
+  );
+};
 
-export default App
+export default App;
