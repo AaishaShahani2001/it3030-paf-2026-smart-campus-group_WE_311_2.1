@@ -1,6 +1,8 @@
 package com.smartcampusopshub.backend.ticket.controller;
 
 import com.smartcampusopshub.backend.common.dto.ApiResponse;
+import com.smartcampusopshub.backend.common.exception.BadRequestException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartcampusopshub.backend.auth.JwtUtil;
 import com.smartcampusopshub.backend.ticket.dto.AddTicketCommentRequestDto;
 import com.smartcampusopshub.backend.ticket.dto.AssignTicketRequestDto;
@@ -11,7 +13,9 @@ import com.smartcampusopshub.backend.ticket.dto.UpdateTicketRequestDto;
 import com.smartcampusopshub.backend.ticket.dto.UpdateTicketStatusRequestDto;
 import com.smartcampusopshub.backend.ticket.service.TicketService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
+import jakarta.validation.Validation;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
@@ -33,14 +37,22 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping({"/api/tickets", "/api/v1/tickets"})
-@RequiredArgsConstructor
 public class TicketController {
 
     private final TicketService ticketService;
     private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+
+    public TicketController(TicketService ticketService, JwtUtil jwtUtil) {
+        this.ticketService = ticketService;
+        this.jwtUtil = jwtUtil;
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<TicketResponseDto>>> getAllTickets(
@@ -113,10 +125,11 @@ public class TicketController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<TicketResponseDto>> createTicket(
-            @Valid @RequestPart("ticket") CreateTicketRequestDto request,
+            @RequestPart("ticket") byte[] ticketPayload,
             @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
+        CreateTicketRequestDto request = parseAndValidateCreateTicketRequest(ticketPayload);
         String username = extractUsername(authorizationHeader);
         TicketResponseDto ticket = ticketService.createTicket(request, attachments, username);
         return ResponseEntity.ok(ApiResponse.success("Ticket created successfully", ticket));
@@ -148,5 +161,29 @@ public class TicketController {
             return jwtUtil.extractUsername(authorizationHeader.substring(7));
         }
         return null;
+    }
+
+    private CreateTicketRequestDto parseAndValidateCreateTicketRequest(byte[] ticketPayload) {
+        if (ticketPayload == null || ticketPayload.length == 0) {
+            throw new BadRequestException("ticket part is required and must be valid JSON");
+        }
+
+        try {
+            String rawJson = new String(ticketPayload, StandardCharsets.UTF_8);
+            CreateTicketRequestDto request = objectMapper.readValue(rawJson, CreateTicketRequestDto.class);
+
+            List<String> violations = validator.validate(request).stream()
+                    .map(ConstraintViolation::getMessage)
+                    .collect(Collectors.toList());
+            if (!violations.isEmpty()) {
+                throw new BadRequestException(String.join("; ", violations));
+            }
+
+            return request;
+        } catch (BadRequestException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BadRequestException("ticket part must be valid JSON");
+        }
     }
 }
