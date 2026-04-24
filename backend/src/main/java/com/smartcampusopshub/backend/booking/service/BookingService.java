@@ -8,6 +8,8 @@ import com.smartcampusopshub.backend.booking.dto.CreateBookingDTO;
 import com.smartcampusopshub.backend.booking.entity.Booking;
 import com.smartcampusopshub.backend.booking.repository.BookingRepository;
 import com.smartcampusopshub.backend.notification.EmailNotificationService;
+import com.smartcampusopshub.backend.Asset.entity.Resource;
+import com.smartcampusopshub.backend.Asset.repository.ResourceRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,7 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final EmailNotificationService emailNotificationService;
-
+    private final ResourceRepository resourceRepository;    
     // CREATE BOOKING
     public BookingResponseDTO createBooking(CreateBookingDTO dto) {
 
@@ -75,19 +77,30 @@ public class BookingService {
     }
 
     // ✅ FIXED HERE (IMPORTANT)
-       private BookingResponseDTO buildDTO(Booking booking, String message) {
-            return new BookingResponseDTO(
-            booking.getId(),
-            booking.getStatus(),
-            message,
-            booking.getUserName(),   // ✅ FORM NAME ONLY
-            booking.getOccupation(),
-            booking.getResourceId(),
-            booking.getStartTime(),
-            booking.getEndTime(),
-            booking.getPurpose()
-        );
-}
+      private BookingResponseDTO buildDTO(Booking booking, String message) {
+
+                Resource resource = resourceRepository
+                        .findById(booking.getResourceId())
+                        .orElse(null);
+
+                String resourceName = (resource != null)
+                        ? resource.getName()
+                        : "Resource #" + booking.getResourceId();
+
+                return new BookingResponseDTO(
+                        booking.getId(),
+                        booking.getStatus(),
+                        message,
+                        booking.getUserName(),
+                        booking.getOccupation(),
+                        booking.getResourceId(),
+                        booking.getStartTime(),
+                        booking.getEndTime(),
+                        booking.getPurpose(),
+                        resourceName,
+                        booking.getRejectReason()
+                );
+            }
     // GET ALL
     public List<BookingResponseDTO> getAllBookings() {
         return bookingRepository.findAll()
@@ -98,18 +111,29 @@ public class BookingService {
 
     // CONVERT TO DTO
     private BookingResponseDTO convertToDTO(Booking booking) {
-    return new BookingResponseDTO(
-            booking.getId(),
-            booking.getStatus(),
-            booking.getPurpose(),
-            booking.getUserName(),
-            booking.getOccupation(),
-            booking.getResourceId(),
-            booking.getStartTime(),
-            booking.getEndTime(),
-            booking.getPurpose()
-    );
-}
+
+                Resource resource = resourceRepository
+                        .findById(booking.getResourceId())
+                        .orElse(null);
+
+                String resourceName = (resource != null)
+                        ? resource.getName()
+                        : "Resource #" + booking.getResourceId();
+
+                return new BookingResponseDTO(
+                        booking.getId(),
+                        booking.getStatus(),
+                        booking.getPurpose(),
+                        booking.getUserName(),
+                        booking.getOccupation(),
+                        booking.getResourceId(),
+                        booking.getStartTime(),
+                        booking.getEndTime(),
+                        booking.getPurpose(),
+                        resourceName,
+                        booking.getRejectReason()
+                );
+            }
 
     public Booking getBookingById(Long id) {
         return bookingRepository.findById(id)

@@ -1,3 +1,4 @@
+
 package com.smartcampusopshub.backend.Asset.entity;
 
 import jakarta.persistence.*;
