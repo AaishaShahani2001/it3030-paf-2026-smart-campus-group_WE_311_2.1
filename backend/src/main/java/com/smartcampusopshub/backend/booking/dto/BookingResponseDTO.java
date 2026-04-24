@@ -16,14 +16,18 @@ public class BookingResponseDTO {
     private Long resourceId;          
     private LocalDateTime startTime;  
     private LocalDateTime endTime;    
-    private String purpose;           
+    private String purpose;  
+    private String rejectReason;   
+    private String resourceName;      
 
     public BookingResponseDTO(Long id, String status, String message,
                               String userName, String occupation,
                               Long resourceId,
                               LocalDateTime startTime,
                               LocalDateTime endTime,
-                              String purpose) {
+                              String purpose,
+                            String rejectReason,
+                            String resourceName) {
         this.id = id;
         this.status = status;
         this.message = message;
@@ -33,5 +37,7 @@ public class BookingResponseDTO {
         this.startTime = startTime;
         this.endTime = endTime;
         this.purpose = purpose;
+        this.rejectReason = rejectReason;
+        this.resourceName = resourceName;
     }
 }

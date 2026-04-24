@@ -32,22 +32,25 @@ export default function MyBookings({ hideLayout }) {
   const now = new Date();
   const approvedBookings = bookings.filter((b) => b.status === "APPROVED");
 
-  // ✅ SORTED BOOKINGS (clean UI)
+  // ✅ UPCOMING
   const upcoming = bookings
     .filter((b) => new Date(b.startTime) >= now)
     .filter((b) =>
       ["APPROVED", "PENDING", "WAITLIST"].includes(b.status)
-    );  
+    );
 
+  // ✅ PAST
   const past = bookings
     .filter((b) => new Date(b.startTime) < now)
     .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-  // ✅ GET BOOKINGS FOR SELECTED DATE
+  // ✅ CALENDAR FILTER
   const getBookingsForDate = (date) => {
-    return approvedBookings.filter((b) => {
-      return new Date(b.startTime).toDateString() === date.toDateString();
-    });
+    return approvedBookings.filter(
+      (b) =>
+        new Date(b.startTime).toDateString() ===
+        date.toDateString()
+    );
   };
 
   const isPast = (date) => new Date(date) < new Date();
@@ -62,7 +65,6 @@ export default function MyBookings({ hideLayout }) {
         method: "PUT",
       });
 
-      // update UI instantly
       setBookings((prev) =>
         prev.map((b) =>
           b.id === id ? { ...b, status: "CANCELLED" } : b
@@ -105,7 +107,14 @@ export default function MyBookings({ hideLayout }) {
         </span>
       </div>
 
-      {/* ✅ CANCEL BUTTON (only if active + future) */}
+      {/* ✅ NEW: SHOW REASON */}
+      {(b.status === "REJECTED" || b.status === "CANCELLED") && (
+        <p className="mt-2 text-sm text-red-500 font-medium">
+          Reason: {b.rejectReason || "No reason provided"}
+        </p>
+      )}
+
+      {/* CANCEL BUTTON */}
       {(b.status === "APPROVED" || b.status === "WAITLIST") &&
         !isPast(b.endTime) && (
           <button
@@ -125,12 +134,15 @@ export default function MyBookings({ hideLayout }) {
       <div className="bg-transparent min-h-screen py-10 px-4">
         <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-lg border border-gray-200 p-8">
 
+          {/* HEADER */}
           <div className="mb-6">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-green-800">Bookings</p>
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
-            My Bookings
+              My Bookings
             </h2>
-            <p className="text-sm text-gray-500 mt-1">Track approved reservations and upcoming requests in one place.</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Track approved reservations and upcoming requests in one place.
+            </p>
           </div>
 
           {/* 🔥 CALENDAR */}

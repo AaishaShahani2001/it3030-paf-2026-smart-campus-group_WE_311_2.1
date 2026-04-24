@@ -187,7 +187,7 @@ const AdminBookings = () => {
           <tbody>
             {filteredBookings.map((b) => (
               <tr key={b.id} className="border-t border-gray-100 hover:bg-gray-50/70">
-                <td className="p-3">{b.resourceId}</td>
+                <td className="p-3"> {b.resourceName || `Resource #${b.resourceId}`}</td>
                 <td className="p-3 font-medium text-gray-800">{resolveBookerName(b)}</td>
                 <td className="p-3">{new Date(b.startTime).toLocaleString()}</td>
                 <td className="p-3">{new Date(b.endTime).toLocaleString()}</td>

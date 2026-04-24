@@ -29,6 +29,24 @@ const BookingPage = () => {
     setIsSubmitting(true);
     setMessage("");
 
+    const now = new Date();
+    const start = new Date(form.startTime);
+    const end = new Date(form.endTime);
+
+    // ❌ Past start time
+    if (start < now) {
+      toast.error("Start time must be in the future");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // ❌ End before start
+    if (end <= start) {
+      toast.error("End time must be after start time");
+      setIsSubmitting(false);
+      return;
+    }
+
     // ✅ DEBUG (VERY IMPORTANT)
     console.log("FORM DATA:", form);
 
@@ -140,6 +158,7 @@ const BookingPage = () => {
                   name="startTime"
                   value={form.startTime}
                   onChange={handleChange}
+                  min={new Date().toISOString().slice(0, 16)} 
                   className="w-full p-3 border border-gray-300 rounded-xl bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-green-700/25 focus:border-green-700 outline-none transition"
                 />
               </div>
@@ -151,6 +170,11 @@ const BookingPage = () => {
                   name="endTime"
                   value={form.endTime}
                   onChange={handleChange}
+                  min={
+                      form.startTime
+                        ? new Date(form.startTime).toISOString().slice(0, 16)
+                        : new Date().toISOString().slice(0, 16)
+                    } 
                   className="w-full p-3 border border-gray-300 rounded-xl bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-green-700/25 focus:border-green-700 outline-none transition"
                 />
               </div>
