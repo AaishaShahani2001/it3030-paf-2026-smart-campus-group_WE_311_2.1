@@ -13,6 +13,5 @@ public class CreateBookingDTO {
     private int attendees;
     private String occupation;
     private String userName;
-
-    private String email; // ✅ THIS is used to get user
+    private String email; 
 }

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Eye, RefreshCw } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const STATUS_META = {
   PENDING: "bg-amber-100 text-amber-800 border border-amber-200",
@@ -59,17 +61,37 @@ const AdminBookings = () => {
         statusFilter === "ALL" || b.status === statusFilter;
 
       const query = search.toLowerCase();
+
       const booker = resolveBookerName(b).toLowerCase();
+
+      // NEW: RESOURCE NAME SUPPORT
+      const resource =
+        (b.resourceName ||
+          b.resource?.name ||
+          `resource #${b.resourceId}`
+        ).toLowerCase();
+
+      // ✅ NEW: DATE SUPPORT
+      const startDate = new Date(b.startTime)
+        .toLocaleDateString()
+        .toLowerCase();
+
+      const endDate = new Date(b.endTime)
+        .toLocaleDateString()
+        .toLowerCase();
+
       const matchesSearch =
         b.purpose?.toLowerCase().includes(query) ||
-        String(b.userId ?? "").toLowerCase().includes(query) ||
-        booker.includes(query);
+        booker.includes(query) ||
+        resource.includes(query) ||      // resource name search
+        startDate.includes(query) ||     // start date search
+        endDate.includes(query);         // end date search
 
       return matchesStatus && matchesSearch;
     });
   }, [bookings, search, statusFilter]);
 
-  // 📊 STATS
+  // STATS
   const stats = {
     total: bookings.length,
     pending: bookings.filter((b) => b.status === "PENDING").length,
@@ -77,6 +99,67 @@ const AdminBookings = () => {
     rejected: bookings.filter((b) => b.status === "REJECTED").length,
     waitlist: bookings.filter((b) => b.status === "WAITLIST").length,
   };
+
+
+  // PDF DOWNLOAD
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("Smart Campus Ops Hub", 14, 15);
+
+    doc.setFontSize(12);
+    doc.text("Bookings Report", 14, 25);
+
+    doc.setFontSize(10);
+    doc.text(`Total: ${stats.total}`, 14, 35);
+    doc.text(`Approved: ${stats.approved}`, 14, 42);
+    doc.text(`Pending: ${stats.pending}`, 14, 49);
+    doc.text(`Rejected: ${stats.rejected}`, 14, 56);
+    doc.text(`Waitlist: ${stats.waitlist}`, 14, 63);
+
+    const tableData = bookings.map((b) => [
+      b.resourceName || `Resource #${b.resourceId}`,
+      resolveBookerName(b),
+      new Date(b.startTime).toLocaleString(),
+      new Date(b.endTime).toLocaleString(),
+      b.status,
+      b.purpose || "-"
+    ]);
+
+    autoTable(doc, {
+      startY: 70,
+      head: [["Resource", "Booker", "Start", "End", "Status", "Purpose"]],
+      body: tableData,
+    });
+
+    doc.save("bookings-report.pdf");
+  };
+
+  //CSV DOWNLOAD
+  const downloadCSV = () => {
+    const headers = ["Resource", "Booker", "Start", "End", "Status", "Purpose"];
+
+    const rows = bookings.map((b) => [
+      b.resourceName || `Resource #${b.resourceId}`,
+      resolveBookerName(b),
+      new Date(b.startTime).toLocaleString(),
+      new Date(b.endTime).toLocaleString(),
+      b.status,
+      b.purpose || "-"
+    ]);
+
+    let csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers, ...rows].map((e) => e.join(",")).join("\n");
+
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "bookings-report.csv");
+    document.body.appendChild(link);
+    link.click();
+  };
+
 
   //  APPROVE
   const handleApprove = async (id) => {
@@ -113,12 +196,29 @@ const AdminBookings = () => {
           <p className="text-gray-500 text-sm">Manage requests, approvals, and status changes.</p>
         </div>
 
-        <button
-          onClick={fetchBookings}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition"
-        >
-          <RefreshCw size={16} /> Refresh
-        </button>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={downloadPDF}
+              className="px-3  text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+            >
+              Download PDF
+            </button>
+
+            <button
+              onClick={downloadCSV}
+              className="px-3  text-sm bg-black text-white rounded-md hover:bg-gray-800 transition"
+            >
+              Download CSV
+            </button>
+
+            <button
+              onClick={fetchBookings}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition"
+            >
+              <RefreshCw size={14} /> Refresh
+            </button>
+
+          </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -268,14 +368,16 @@ const AdminBookings = () => {
                 </p>
               </div>
 
-              {selectedBooking.rejectReason && (
-                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Reject Reason</p>
-                  <p className="mt-1 text-sm text-rose-800 leading-relaxed">
-                    {selectedBooking.rejectReason}
-                  </p>
-                </div>
-              )}
+              {selectedBooking.status === "REJECTED" && selectedBooking.rejectReason && (
+                  <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">
+                      Reject Reason
+                    </p>
+                    <p className="mt-1 text-sm text-rose-800 leading-relaxed">
+                      {selectedBooking.rejectReason}
+                    </p>
+                  </div>
+                )}
 
               <div className="flex flex-wrap gap-3 mt-6">
                 {selectedBooking.status !== "APPROVED" && (
