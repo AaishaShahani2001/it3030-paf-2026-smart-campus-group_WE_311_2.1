@@ -76,7 +76,7 @@ public class BookingService {
         return buildDTO(saved, "Booking created successfully");
     }
 
-    // ✅ FIXED HERE (IMPORTANT)
+    
       private BookingResponseDTO buildDTO(Booking booking, String message) {
 
                 Resource resource = resourceRepository
@@ -97,8 +97,9 @@ public class BookingService {
                         booking.getStartTime(),
                         booking.getEndTime(),
                         booking.getPurpose(),
-                        resourceName,
-                        booking.getRejectReason()
+                        booking.getRejectReason(),
+                        resourceName
+                        
                 );
             }
     // GET ALL
@@ -110,7 +111,7 @@ public class BookingService {
     }
 
     // CONVERT TO DTO
-    private BookingResponseDTO convertToDTO(Booking booking) {
+    public BookingResponseDTO convertToDTO(Booking booking) {
 
                 Resource resource = resourceRepository
                         .findById(booking.getResourceId())
@@ -130,8 +131,9 @@ public class BookingService {
                         booking.getStartTime(),
                         booking.getEndTime(),
                         booking.getPurpose(),
-                        resourceName,
-                        booking.getRejectReason()
+                        booking.getRejectReason(),
+                        resourceName
+                        
                 );
             }
 

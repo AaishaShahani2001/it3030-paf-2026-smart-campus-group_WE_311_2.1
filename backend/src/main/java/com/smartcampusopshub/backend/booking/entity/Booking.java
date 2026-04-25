@@ -10,7 +10,7 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ✅ FIXED TYPE
+    // FIXED TYPE
     private String userId;
 
     private Long resourceId;
@@ -28,10 +28,10 @@ public class Booking {
 
     public Long getId() { return id; }
 
-    // ✅ FIXED
+    // FIXED
     public String getUserId() { return userId; }
 
-    // ✅ FIXED
+    // FIXED
     public void setUserId(String userId) { this.userId = userId; }
 
     public Long getResourceId() { return resourceId; }

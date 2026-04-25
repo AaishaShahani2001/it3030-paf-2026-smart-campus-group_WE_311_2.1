@@ -33,24 +33,20 @@ const BookingPage = () => {
     const start = new Date(form.startTime);
     const end = new Date(form.endTime);
 
-    // ❌ Past start time
     if (start < now) {
       toast.error("Start time must be in the future");
       setIsSubmitting(false);
       return;
     }
 
-    // ❌ End before start
     if (end <= start) {
       toast.error("End time must be after start time");
       setIsSubmitting(false);
       return;
     }
 
-    // ✅ DEBUG (VERY IMPORTANT)
-    console.log("FORM DATA:", form);
-
     try {
+      // 🔥 FIRST TRY NORMAL BOOKING
       const res = await fetch("http://localhost:8080/api/bookings", {
         method: "POST",
         headers: {
@@ -63,19 +59,57 @@ const BookingPage = () => {
           purpose: form.purpose,
           attendees: 1,
           email: form.email,
-
-          userName: form.name,        // ✅ FIX
-          occupation: form.occupation // ✅ FIX
+          userName: form.name,
+          occupation: form.occupation
         }),
       });
 
       const data = await res.json();
 
+      // 🔴 IF CONFLICT
+      if (!res.ok && data.message?.includes("CONFLICT")) {
+
+        const confirmWaitlist = window.confirm(
+          "Selected time is unavailable.\nDo you want to add to WAITLIST?"
+        );
+
+        if (!confirmWaitlist) {
+          setIsSubmitting(false);
+          return;
+        }
+
+        // 🔥 CREATE WAITLIST BOOKING
+        const waitlistRes = await fetch("http://localhost:8080/api/bookings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            resourceId: parseInt(id),
+            startTime: form.startTime,
+            endTime: form.endTime,
+            purpose: form.purpose,
+            attendees: 1,
+            email: form.email,
+            userName: form.name,
+            occupation: form.occupation,
+            forceWaitlist: true   // 🔥 IMPORTANT
+          }),
+        });
+
+        const waitlistData = await waitlistRes.json();
+
+        if (!waitlistRes.ok) throw new Error(waitlistData.message);
+
+        toast.info("Your booking added to WAITLIST");
+        navigate("/bookings");
+        return;
+      }
+
+      // ✅ NORMAL SUCCESS
       if (!res.ok) throw new Error(data.message);
 
-      setMessage("Booking successful!");
       toast.success("Booking created successfully");
-
       navigate("/bookings");
 
     } catch (err) {

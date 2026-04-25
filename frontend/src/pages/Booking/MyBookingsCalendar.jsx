@@ -19,7 +19,7 @@ export default function BookingCalendar() {
 
         setBookings(normalized);
 
-        // ✅ONLY APPROVED BOOKINGS FOR CALENDAR
+        //ONLY APPROVED BOOKINGS FOR CALENDAR
         const approved = normalized.filter(
           (b) => b.status === "APPROVED"
         );
@@ -92,7 +92,7 @@ export default function BookingCalendar() {
                 >
                   {i + 1}
 
-                  {/* ✅ ONLY APPROVED dots (past + upcoming) */}
+                  {/* ONLY APPROVED dots (past + upcoming) */}
                   {(hasPastApproved || hasUpcomingApproved) && (
                     <div className="flex justify-center mt-1 gap-1">
                       {hasPastApproved && (
@@ -128,7 +128,8 @@ export default function BookingCalendar() {
                 <div key={b.id} className="p-4 mb-4 rounded-xl border border-green-200 bg-green-50">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-gray-900">
-                    Resource #{b.resourceId}
+                      {b.resourceName || resourceMap[b.resourceId] || `Resource #${b.resourceId}`}
+
                     </h3>
                     <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusBadge(b.status)}`}>
                       {b.status}
@@ -176,7 +177,7 @@ export default function BookingCalendar() {
             >
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  Resource #{b.resourceId}
+                  {b.resourceName || resourceMap[b.resourceId] || `Resource #${b.resourceId}`}
                 </h3>
 
                 <p className="text-sm text-gray-600">
