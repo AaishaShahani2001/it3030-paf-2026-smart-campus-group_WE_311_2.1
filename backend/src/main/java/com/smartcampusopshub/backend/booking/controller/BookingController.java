@@ -86,7 +86,10 @@ public class BookingController {
 
     // USER BOOKINGS
     @GetMapping("/user-by-email/{email}")
-    public List<Booking> getBookingsByEmail(@PathVariable String email) {
-        return bookingService.getBookingsByEmail(email);
+    public List<BookingResponseDTO> getBookingsByEmail(@PathVariable String email) {
+        return bookingService.getBookingsByEmail(email)
+                .stream()
+                .map(bookingService::convertToDTO)
+                .toList();
     }
 }

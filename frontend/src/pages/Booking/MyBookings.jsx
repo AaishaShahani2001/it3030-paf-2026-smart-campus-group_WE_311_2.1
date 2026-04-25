@@ -8,7 +8,7 @@ export default function MyBookings({ hideLayout }) {
   const [bookings, setBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // ✅ FETCH USER BOOKINGS
+  // FETCH USER BOOKINGS
   useEffect(() => {
     const email = localStorage.getItem("userEmail");
 
@@ -32,19 +32,23 @@ export default function MyBookings({ hideLayout }) {
   const now = new Date();
   const approvedBookings = bookings.filter((b) => b.status === "APPROVED");
 
-  // ✅ UPCOMING
+    //  UPCOMING
+  // ADD THIS NEW SECTION
+  const rejected = bookings.filter((b) => b.status === "REJECTED");
+
+  // UPDATED UPCOMING (REMOVE REJECTED)
   const upcoming = bookings
     .filter((b) => new Date(b.startTime) >= now)
     .filter((b) =>
       ["APPROVED", "PENDING", "WAITLIST"].includes(b.status)
     );
 
-  // ✅ PAST
+  // PAST (NO CHANGE)
   const past = bookings
     .filter((b) => new Date(b.startTime) < now)
     .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-  // ✅ CALENDAR FILTER
+  //CALENDAR FILTER
   const getBookingsForDate = (date) => {
     return approvedBookings.filter(
       (b) =>
@@ -55,7 +59,7 @@ export default function MyBookings({ hideLayout }) {
 
   const isPast = (date) => new Date(date) < new Date();
 
-  // ✅ CANCEL BOOKING
+  //CANCEL BOOKING
   const handleCancel = async (id) => {
     const confirm = window.confirm("Cancel this booking?");
     if (!confirm) return;
@@ -75,7 +79,7 @@ export default function MyBookings({ hideLayout }) {
     }
   };
 
-  // ✅ STATUS COLOR
+  // STATUS COLOR
   const statusColor = (status) => {
     if (status === "APPROVED") return "bg-green-100 text-green-800 border border-green-200";
     if (status === "WAITLIST") return "bg-amber-100 text-amber-800 border border-amber-200";
@@ -84,13 +88,13 @@ export default function MyBookings({ hideLayout }) {
     return "bg-gray-100 text-gray-700 border border-gray-200";
   };
 
-  // ✅ BOOKING CARD
+  // BOOKING CARD
   const BookingCard = ({ b }) => (
     <div className="bg-white rounded-2xl shadow-md p-5 mb-4 border border-gray-200">
       <div className="flex justify-between items-center">
         <div>
           <p className="font-semibold text-gray-900">
-            Resource #{b.resourceId}
+            {b.resourceName || `Resource #${b.resourceId}`}
           </p>
           <p className="text-sm text-gray-500">
             {new Date(b.startTime).toLocaleString()} →{" "}
@@ -107,7 +111,7 @@ export default function MyBookings({ hideLayout }) {
         </span>
       </div>
 
-      {/* ✅ NEW: SHOW REASON */}
+      {/*NEW: SHOW REASON */}
       {(b.status === "REJECTED" || b.status === "CANCELLED") && (
         <p className="mt-2 text-sm text-red-500 font-medium">
           Reason: {b.rejectReason || "No reason provided"}
@@ -145,7 +149,7 @@ export default function MyBookings({ hideLayout }) {
             </p>
           </div>
 
-          {/* 🔥 CALENDAR */}
+          {/* CALENDAR */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
 
             <div className="bg-gray-50 p-4 rounded-xl shadow-sm border border-gray-200">
@@ -197,7 +201,7 @@ export default function MyBookings({ hideLayout }) {
                       : "bg-green-100 border border-green-300"
                   }`}
                 >
-                  <p className="font-bold text-gray-900">Resource #{b.resourceId}</p>
+                  <p className="font-bold text-gray-900">{b.resourceName || `Resource #${b.resourceId}`}</p>
                   <p className="text-sm text-gray-700">
                     {new Date(b.startTime).toLocaleTimeString()} -{" "}
                     {new Date(b.endTime).toLocaleTimeString()}
@@ -218,6 +222,19 @@ export default function MyBookings({ hideLayout }) {
           {upcoming.map((b) => (
             <BookingCard key={b.id} b={b} />
           ))}
+
+          {/* REJECTED BOOKINGS */}
+            <h3 className="text-lg font-semibold mt-8 mb-3 text-gray-800">
+              Rejected Bookings
+            </h3>
+
+            {rejected.length === 0 && (
+              <p className="text-gray-500">No rejected bookings</p>
+            )}
+
+            {rejected.map((b) => (
+              <BookingCard key={b.id} b={b} />
+            ))}
 
           {/* PAST */}
           <h3 className="text-lg font-semibold mt-8 mb-3 text-gray-800">
